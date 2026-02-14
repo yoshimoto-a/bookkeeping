@@ -1,0 +1,308 @@
+// Prisma schema for event-driven accounting
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+        
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum TaxMethod {
+  TAX_INCLUSIVE
+  TAX_EXCLUSIVE
+}
+
+enum BusinessTaxStatus {
+  EXEMPT
+  TAXABLE
+}
+
+enum AllocationType {
+  NORMAL
+  FEE
+  DISCOUNT
+}
+
+enum EntrySourceType {
+  OPENING_BALANCE
+  SALE
+  PAYMENT
+  FIXED_COST
+  DEPRECIATION
+  CANCELLATION
+}
+
+enum Side {
+  DEBIT
+  CREDIT
+}
+
+enum AssetCategory {
+  NORMAL
+  SMALL_AMOUNT
+  BULK_3YEAR
+  IMMEDIATE
+}
+
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+}
+
+model User {
+  id          String   @id @default(cuid()) @map("id")
+  supabaseId  String   @unique             @map("supabase_id")
+  email       String                        @map("email")
+  name        String?                       @map("name")
+  createdAt   DateTime @default(now())      @map("created_at")
+
+  policies    AccountingPolicy[]
+  partners    Partner[]
+  accounts    Account[]
+  sales       SaleEvent[]
+  payments    PaymentEvent[]
+  fixedCosts  FixedCostEvent[]
+  fixedAssets FixedAssetEvent[]
+  openings    OpeningBalance[]
+  journals    JournalEntry[]
+  generations GenerationLog[]
+
+  @@map("users")
+}
+
+model AccountingPolicy {
+  id                 String            @id @default(cuid()) @map("id")
+  userId             String                                @map("user_id")
+  fiscalYear         Int                                   @map("fiscal_year")
+  taxMethod          TaxMethod                             @map("tax_method")
+  businessTaxStatus  BusinessTaxStatus                     @map("business_tax_status")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fiscalYear])
+  @@map("accounting_policies")
+}
+
+model Partner {
+  id     String @id @default(cuid()) @map("id")
+  userId String                        @map("user_id")
+  name   String                        @map("name")
+  code   String?                       @map("code")
+
+  user User @relation(fields: [userId], references: [id])
+
+  // 逆リレーション（パートナー関連イベント）
+  saleEvents       SaleEvent[]
+  fixedCostEvents  FixedCostEvent[]
+  fixedAssetEvents FixedAssetEvent[]
+
+  @@map("partners")
+}
+
+model TaxRate {
+  id      String @id @default(cuid()) @map("id")
+  name    String @unique               @map("name")
+  rateBps Int                           @map("rate_bps")
+
+  // 逆リレーション
+  saleEvents       SaleEvent[]
+  fixedCostEvents  FixedCostEvent[]
+  fixedAssetEvents FixedAssetEvent[]
+  journalLines     JournalEntryLine[]
+
+  @@map("tax_rates")
+}
+
+model Account {
+  id             String      @id @default(cuid()) @map("id")
+  userId         String                        @map("user_id")
+  code           String                        @map("code")
+  name           String                        @map("name")
+  type           AccountType                   @map("type")
+  isOwnerAccount Boolean     @default(false)   @map("is_owner_account")
+
+  user User @relation(fields: [userId], references: [id])
+
+  // 逆リレーション（アカウント参照元）
+  paymentEvents          PaymentEvent[]
+  openingBalances        OpeningBalance[]
+  journalEntryLines      JournalEntryLine[]
+  fixedCostExpenseEvents FixedCostEvent[] @relation("FixedCostExpenseAccount")
+  fixedCostPaymentEvents FixedCostEvent[] @relation("FixedCostPaymentAccount")
+
+  @@unique([userId, code])
+  @@map("accounts")
+}
+
+model SaleEvent {
+  id          String   @id @default(cuid()) @map("id")
+  userId      String                        @map("user_id")
+  partnerId   String?                       @map("partner_id")
+  date        DateTime                      @map("date")
+  description String                        @map("description")
+  amount      Int                           @map("amount")
+  taxRateId   String                        @map("tax_rate_id")
+  createdAt   DateTime @default(now())      @map("created_at")
+
+  cancelledEventId String?                  @map("cancelled_event_id")
+  isCancelled      Boolean  @default(false) @map("is_cancelled")
+
+  user    User      @relation(fields: [userId], references: [id])
+  partner Partner?  @relation(fields: [partnerId], references: [id])
+  taxRate TaxRate   @relation(fields: [taxRateId], references: [id])
+
+  // 逆リレーション
+  allocations PaymentAllocation[]
+
+  @@map("sale_events")
+}
+
+model PaymentEvent {
+  id          String   @id @default(cuid()) @map("id")
+  userId      String                        @map("user_id")
+  date        DateTime                      @map("date")
+  description String                        @map("description")
+  amount      Int                           @map("amount")
+  accountId   String                        @map("account_id")
+  createdAt   DateTime @default(now())      @map("created_at")
+
+  cancelledEventId String?                  @map("cancelled_event_id")
+  isCancelled      Boolean  @default(false) @map("is_cancelled")
+
+  user    User    @relation(fields: [userId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  allocations PaymentAllocation[]
+
+  @@map("payment_events")
+}
+
+model PaymentAllocation {
+  id             String        @id @default(cuid()) @map("id")
+  paymentEventId String                        @map("payment_event_id")
+  saleEventId    String                        @map("sale_event_id")
+  amount         Int                           @map("amount")
+  type           AllocationType                @map("type")
+
+  payment PaymentEvent @relation(fields: [paymentEventId], references: [id])
+  sale    SaleEvent    @relation(fields: [saleEventId], references: [id])
+
+  @@map("payment_allocations")
+}
+
+model FixedCostEvent {
+  id               String   @id @default(cuid()) @map("id")
+  userId           String                        @map("user_id")
+  partnerId        String?                       @map("partner_id")
+  date             DateTime                      @map("date")
+  description      String                        @map("description")
+  amount           Int                           @map("amount")
+  taxRateId        String                        @map("tax_rate_id")
+  accountId        String                        @map("account_id")
+  paymentAccountId String                        @map("payment_account_id")
+  businessRatio    Int                           @map("business_ratio")
+  createdAt        DateTime @default(now())      @map("created_at")
+
+  cancelledEventId String?                  @map("cancelled_event_id")
+  isCancelled      Boolean  @default(false) @map("is_cancelcelled")
+
+  user           User      @relation(fields: [userId], references: [id])
+  partner        Partner?  @relation(fields: [partnerId], references: [id])
+  taxRate        TaxRate   @relation(fields: [taxRateId], references: [id])
+  account        Account   @relation("FixedCostExpenseAccount", fields: [accountId], references: [id])
+  paymentAccount Account   @relation("FixedCostPaymentAccount", fields: [paymentAccountId], references: [id])
+
+  @@map("fixed_cost_events")
+}
+
+model FixedAssetEvent {
+  id                 String   @id @default(cuid()) @map("id")
+  userId             String                        @map("user_id")
+  partnerId          String?                       @map("partner_id")
+  date               DateTime                      @map("date")
+  description        String                        @map("description")
+  amount             Int                           @map("amount")
+  taxRateId          String                        @map("tax_rate_id")
+  usefulLife         Int                           @map("useful_life")
+  assetCategory      AssetCategory                 @map("asset_category")
+  depreciationMethod DepreciationMethod            @map("depreciation_method")
+  businessRatio      Int                           @map("business_ratio")
+  createdAt          DateTime @default(now())      @map("created_at")
+
+  cancelledEventId String?                  @map("cancelled_event_id")
+  isCancelled      Boolean  @default(false) @map("is_cancelled")
+
+  user    User     @relation(fields: [userId], references: [id])
+  partner Partner? @relation(fields: [partnerId], references: [id])
+  taxRate TaxRate  @relation(fields: [taxRateId], references: [id])
+
+  @@map("fixed_asset_events")
+}
+
+model OpeningBalance {
+  id         String  @id @default(cuid()) @map("id")
+  userId     String                        @map("user_id")
+  fiscalYear Int                           @map("fiscal_year")
+  accountId  String                        @map("account_id")
+  side       Side                          @map("side")
+  amount     Int                           @map("amount")
+
+  user    User    @relation(fields: [userId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@unique([userId, fiscalYear, accountId])
+  @@map("opening_balances")
+}
+
+model JournalEntry {
+  id            String          @id @default(cuid()) @map("id")
+  userId        String                                @map("user_id")
+  date          DateTime                              @map("date")
+  description   String                                @map("description")
+  sourceType    EntrySourceType                       @map("source_type")
+  sourceEventId String                                @map("source_event_id")
+  generation    Int                                   @map("generation")
+  createdAt     DateTime @default(now())              @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  lines  JournalEntryLine[]
+
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id             String   @id @default(cuid()) @map("id")
+  journalEntryId String                        @map("journal_entry_id")
+  accountId      String                        @map("account_id")
+  debit          Int                           @map("debit")
+  credit         Int                           @map("credit")
+  taxRateId      String?                       @map("tax_rate_id")
+  taxAmount      Int                           @map("tax_amount")
+
+  entry  JournalEntry @relation(fields: [journalEntryId], references: [id])
+  account Account      @relation(fields: [accountId], references: [id])
+  taxRate TaxRate?     @relation(fields: [taxRateId], references: [id])
+
+  @@map("journal_entry_lines")
+}
+
+model GenerationLog {
+  id         String   @id @default(cuid()) @map("id")
+  userId     String                        @map("user_id")
+  fiscalYear Int                           @map("fiscal_year")
+  generation Int                           @map("generation")
+  createdAt  DateTime @default(now())      @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fiscalYear])
+  @@map("generation_logs")
+}
