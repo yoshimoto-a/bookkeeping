@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { ACCOUNT_TEMPLATES } from "../lib/constants/account-templates";
+import { ACCOUNT_TEMPLATES } from "../lib/constants/accountTemplates";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
