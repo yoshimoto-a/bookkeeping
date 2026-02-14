@@ -1,4 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# bookkeeping
+
+個人事業主向け会計アプリ
+
+## 技術スタック
+
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Prisma (PostgreSQL)
+- Supabase Auth
+- Tailwind CSS v4
+- react-hook-form + zod
+- react-hot-toast
+
+## コマンド
+
+```bash
+# 依存関係インストール
+pnpm install
+
+# 開発サーバー起動
+pnpm dev
+
+# ビルド
+pnpm build
+
+# 本番サーバー起動
+pnpm start
+
+# Lint
+pnpm lint
+
+# Prismaクライアント生成
+npx prisma generate
+
+# マイグレーション作成
+npx prisma migrate dev --name <migration_name>
+
+# マイグレーション適用(本番)
+npx prisma migrate deploy
+
+# シードデータ投入
+npx prisma db seed
+
+# Prisma Studio(DBブラウザ)
+npx prisma studio
+```
 
 ## ER図
 ```mermaid
