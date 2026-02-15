@@ -5,10 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { loginSchema, type AuthFormData } from "@/app/_types/auth";
 import { login } from "./actions";
-import { TextInput } from "@/app/_components/auth/TextInput";
-import { PrimaryButton } from "@/app/_components/auth/PrimaryButton";
-import { SecondaryLink } from "@/app/_components/auth/SecondaryLink";
-import { FormError } from "@/app/_components/auth/FormError";
+import { TextInput } from "@/app/_components/TextInput";
+import { PrimaryButton } from "@/app/_components/PrimaryButton";
+import { SecondaryLink } from "@/app/_components/SecondaryLink";
+import { FormError } from "@/app/_components/FormError";
 
 export const LoginPage = () => {
   const {

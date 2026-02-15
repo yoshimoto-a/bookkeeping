@@ -1,4 +1,12 @@
-// Prisma schema for event-driven accounting
+// =============================================================================
+// 青色申告 個人事業主向け帳簿アプリ — Prisma Schema
+// 設計思想:
+//   - 仕訳（JournalEntry / JournalLine）が唯一の会計的ソースオブトゥルース
+//   - 業務イベント（売上・入金・消込）は持たない
+//   - 推測・補完・自動解釈を一切しない
+//   - 残高は保持しない（元帳から導出）
+//   - cascading delete は設定しない（削除禁止思想）
+// =============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -7,302 +15,352 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-        
+
+// ---------------------------------------------------------------------------
+// ENUM
+// ---------------------------------------------------------------------------
+
+// 勘定科目の分類（5要素）
 enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  REVENUE
-  EXPENSE
+  ASSET     // 資産
+  LIABILITY // 負債
+  EQUITY    // 純資産
+  REVENUE   // 収益
+  EXPENSE   // 費用
 }
 
-enum TaxMethod {
-  TAX_INCLUSIVE
-  TAX_EXCLUSIVE
+// 定型仕訳テンプレートの種別
+enum PresetKind {
+  ONE_SIDE_FIXED // 片側固定（口座入力型）— 例: 経費支払い
+  TWO_SIDE_FIXED // 両側固定（売上など）— 例: 売上/売掛金
 }
 
-enum BusinessTaxStatus {
-  EXEMPT
-  TAXABLE
+// 仕訳の発生元種別
+enum JournalOrigin {
+  PRESET       // 定型仕訳テンプレート経由
+  TRANSFER     // 振替仕訳
+  IMPORT       // CSV等のインポート経由
+  DEPRECIATION // 減価償却
+  OPENING      // 期首残高
 }
 
-enum AllocationType {
-  NORMAL
-  FEE
-  DISCOUNT
+// 消費税の課税区分（年度単位でユーザーが設定）
+enum TaxStatus {
+  EXEMPT  // 免税事業者
+  TAXABLE // 課税事業者
 }
 
-enum EntrySourceType {
-  OPENING_BALANCE
-  SALE
-  PAYMENT
-  FIXED_COST
-  DEPRECIATION
-  CANCELLATION
+// インポートセッションのステータス
+enum ImportStatus {
+  DRAFT   // 下書き（マッピング中）
+  APPLIED // 適用済み（仕訳生成済み）
 }
 
-enum Side {
-  DEBIT
-  CREDIT
-}
-
-enum AssetCategory {
-  NORMAL
-  SMALL_AMOUNT
-  BULK_3YEAR
-  IMMEDIATE
-}
-
-enum DepreciationMethod {
-  STRAIGHT_LINE
-  DECLINING_BALANCE
-}
-
-model User {
-  id          String   @id @default(cuid()) @map("id")
-  supabaseId  String   @unique             @map("supabase_id")
-  email       String                        @map("email")
-  name        String?                       @map("name")
-  createdAt   DateTime @default(now())      @map("created_at")
-
-  policies    AccountingPolicy[]
-  partners    Partner[]
-  accounts    Account[]
-  sales       SaleEvent[]
-  payments    PaymentEvent[]
-  fixedCosts  FixedCostEvent[]
-  fixedAssets FixedAssetEvent[]
-  openings    OpeningBalance[]
-  journals    JournalEntry[]
-  generations GenerationLog[]
-
-  @@map("users")
-}
-
-model AccountingPolicy {
-  id                 String            @id @default(cuid()) @map("id")
-  userId             String                                @map("user_id")
-  fiscalYear         Int                                   @map("fiscal_year")
-  taxMethod          TaxMethod                             @map("tax_method")
-  businessTaxStatus  BusinessTaxStatus                     @map("business_tax_status")
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, fiscalYear])
-  @@map("accounting_policies")
-}
-
-model Partner {
-  id     String @id @default(cuid()) @map("id")
-  userId String                        @map("user_id")
-  name   String                        @map("name")
-  code   String?                       @map("code")
-
-  user User @relation(fields: [userId], references: [id])
-
-  // 逆リレーション（パートナー関連イベント）
-  saleEvents       SaleEvent[]
-  fixedCostEvents  FixedCostEvent[]
-  fixedAssetEvents FixedAssetEvent[]
-
-  @@map("partners")
-}
-
+// ---------------------------------------------------------------------------
+// TaxRate — 税率マスタ（ユーザー共通、シードで投入）
+// ---------------------------------------------------------------------------
 model TaxRate {
-  id      String @id @default(cuid()) @map("id")
-  name    String @unique               @map("name")
-  rateBps Int                           @map("rate_bps")
+  id        String   @id @default(cuid())
+  name      String   @unique                              /// "標準10%", "軽減8%" など
+  rateBps   Int                    @map("rate_bps")       /// bps（10% → 1000）
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 逆リレーション
-  saleEvents       SaleEvent[]
-  fixedCostEvents  FixedCostEvent[]
-  fixedAssetEvents FixedAssetEvent[]
-  journalLines     JournalEntryLine[]
+  journalLines JournalLine[]
 
   @@map("tax_rates")
 }
 
-model Account {
-  id             String      @id @default(cuid()) @map("id")
-  userId         String                        @map("user_id")
-  code           String                        @map("code")
-  name           String                        @map("name")
-  type           AccountType                   @map("type")
-  isOwnerAccount Boolean     @default(false)   @map("is_owner_account")
-
-  user User @relation(fields: [userId], references: [id])
-
-  // 逆リレーション（アカウント参照元）
-  paymentEvents          PaymentEvent[]
-  openingBalances        OpeningBalance[]
-  journalEntryLines      JournalEntryLine[]
-  fixedCostExpenseEvents FixedCostEvent[] @relation("FixedCostExpenseAccount")
-  fixedCostPaymentEvents FixedCostEvent[] @relation("FixedCostPaymentAccount")
-
-  @@unique([userId, code])
-  @@map("accounts")
-}
-
-model SaleEvent {
-  id          String   @id @default(cuid()) @map("id")
-  userId      String                        @map("user_id")
-  partnerId   String?                       @map("partner_id")
-  date        DateTime                      @map("date")
-  description String                        @map("description")
-  amount      Int                           @map("amount")
-  taxRateId   String                        @map("tax_rate_id")
-  createdAt   DateTime @default(now())      @map("created_at")
-
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelled")
-
-  user    User      @relation(fields: [userId], references: [id])
-  partner Partner?  @relation(fields: [partnerId], references: [id])
-  taxRate TaxRate   @relation(fields: [taxRateId], references: [id])
-
-  // 逆リレーション
-  allocations PaymentAllocation[]
-
-  @@map("sale_events")
-}
-
-model PaymentEvent {
-  id          String   @id @default(cuid()) @map("id")
-  userId      String                        @map("user_id")
-  date        DateTime                      @map("date")
-  description String                        @map("description")
-  amount      Int                           @map("amount")
-  accountId   String                        @map("account_id")
-  createdAt   DateTime @default(now())      @map("created_at")
-
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelled")
-
-  user    User    @relation(fields: [userId], references: [id])
-  account Account @relation(fields: [accountId], references: [id])
-  allocations PaymentAllocation[]
-
-  @@map("payment_events")
-}
-
-model PaymentAllocation {
-  id             String        @id @default(cuid()) @map("id")
-  paymentEventId String                        @map("payment_event_id")
-  saleEventId    String                        @map("sale_event_id")
-  amount         Int                           @map("amount")
-  type           AllocationType                @map("type")
-
-  payment PaymentEvent @relation(fields: [paymentEventId], references: [id])
-  sale    SaleEvent    @relation(fields: [saleEventId], references: [id])
-
-  @@map("payment_allocations")
-}
-
-model FixedCostEvent {
-  id               String   @id @default(cuid()) @map("id")
-  userId           String                        @map("user_id")
-  partnerId        String?                       @map("partner_id")
-  date             DateTime                      @map("date")
-  description      String                        @map("description")
-  amount           Int                           @map("amount")
-  taxRateId        String                        @map("tax_rate_id")
-  accountId        String                        @map("account_id")
-  paymentAccountId String                        @map("payment_account_id")
-  businessRatio    Int                           @map("business_ratio")
-  createdAt        DateTime @default(now())      @map("created_at")
-
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelcelled")
-
-  user           User      @relation(fields: [userId], references: [id])
-  partner        Partner?  @relation(fields: [partnerId], references: [id])
-  taxRate        TaxRate   @relation(fields: [taxRateId], references: [id])
-  account        Account   @relation("FixedCostExpenseAccount", fields: [accountId], references: [id])
-  paymentAccount Account   @relation("FixedCostPaymentAccount", fields: [paymentAccountId], references: [id])
-
-  @@map("fixed_cost_events")
-}
-
-model FixedAssetEvent {
-  id                 String   @id @default(cuid()) @map("id")
-  userId             String                        @map("user_id")
-  partnerId          String?                       @map("partner_id")
-  date               DateTime                      @map("date")
-  description        String                        @map("description")
-  amount             Int                           @map("amount")
-  taxRateId          String                        @map("tax_rate_id")
-  usefulLife         Int                           @map("useful_life")
-  assetCategory      AssetCategory                 @map("asset_category")
-  depreciationMethod DepreciationMethod            @map("depreciation_method")
-  businessRatio      Int                           @map("business_ratio")
-  createdAt          DateTime @default(now())      @map("created_at")
-
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelled")
-
-  user    User     @relation(fields: [userId], references: [id])
-  partner Partner? @relation(fields: [partnerId], references: [id])
-  taxRate TaxRate  @relation(fields: [taxRateId], references: [id])
-
-  @@map("fixed_asset_events")
-}
-
-model OpeningBalance {
-  id         String  @id @default(cuid()) @map("id")
+// ---------------------------------------------------------------------------
+// FiscalYearSetting — 年度ごとの会計設定
+// 課税区分（免税/課税）を年度単位で管理
+// ---------------------------------------------------------------------------
+model FiscalYearSetting {
+  id         String    @id @default(cuid())
   userId     String                        @map("user_id")
-  fiscalYear Int                           @map("fiscal_year")
-  accountId  String                        @map("account_id")
-  side       Side                          @map("side")
-  amount     Int                           @map("amount")
-
-  user    User    @relation(fields: [userId], references: [id])
-  account Account @relation(fields: [accountId], references: [id])
-
-  @@unique([userId, fiscalYear, accountId])
-  @@map("opening_balances")
-}
-
-model JournalEntry {
-  id            String          @id @default(cuid()) @map("id")
-  userId        String                                @map("user_id")
-  date          DateTime                              @map("date")
-  description   String                                @map("description")
-  sourceType    EntrySourceType                       @map("source_type")
-  sourceEventId String                                @map("source_event_id")
-  generation    Int                                   @map("generation")
-  createdAt     DateTime @default(now())              @map("created_at")
-
-  user   User   @relation(fields: [userId], references: [id])
-  lines  JournalEntryLine[]
-
-  @@map("journal_entries")
-}
-
-model JournalEntryLine {
-  id             String   @id @default(cuid()) @map("id")
-  journalEntryId String                        @map("journal_entry_id")
-  accountId      String                        @map("account_id")
-  debit          Int                           @map("debit")
-  credit         Int                           @map("credit")
-  taxRateId      String?                       @map("tax_rate_id")
-  taxAmount      Int                           @map("tax_amount")
-
-  entry  JournalEntry @relation(fields: [journalEntryId], references: [id])
-  account Account      @relation(fields: [accountId], references: [id])
-  taxRate TaxRate?     @relation(fields: [taxRateId], references: [id])
-
-  @@map("journal_entry_lines")
-}
-
-model GenerationLog {
-  id         String   @id @default(cuid()) @map("id")
-  userId     String                        @map("user_id")
-  fiscalYear Int                           @map("fiscal_year")
-  generation Int                           @map("generation")
-  createdAt  DateTime @default(now())      @map("created_at")
+  fiscalYear Int                           @map("fiscal_year") /// 対象年度（例: 2025）
+  taxStatus  TaxStatus                     @map("tax_status")  /// 免税 / 課税
+  createdAt  DateTime  @default(now())     @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, fiscalYear])
-  @@map("generation_logs")
+  @@map("fiscal_year_settings")
+}
+
+// ---------------------------------------------------------------------------
+// User — Supabase認証を想定
+// ---------------------------------------------------------------------------
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String   @unique              @map("supabase_id")
+  email      String
+  name       String?
+  createdAt  DateTime @default(now())      @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  accounts           Account[]
+  partners           Partner[]
+  presets            Preset[]
+  transactions       Transaction[]
+  journalEntries     JournalEntry[]
+  importSessions     ImportSession[]
+  fixedAssets        FixedAsset[]
+  fiscalYearSettings FiscalYearSetting[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Account — 勘定科目（ユーザーごとに管理、階層構造あり）
+// code は検索用ショートコード（会計コードではない）
+// ---------------------------------------------------------------------------
+model Account {
+  id             String      @id @default(cuid())
+  userId         String                            @map("user_id")
+  parentId       String?                           @map("parent_id")
+  code           String                                               /// 検索用ショートコード
+  name           String                                               /// 科目名
+  kana           String?                                              /// カナ（検索補助）
+  searchKey      String?                           @map("search_key") /// 正規化検索用キー
+  type           AccountType                                          /// 資産/負債/純資産/収益/費用
+  isOwnerAccount Boolean     @default(false)       @map("is_owner_account") /// オーナー勘定フラグ（事業主貸・事業主借・元入金）
+  createdAt      DateTime    @default(now())       @map("created_at")
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  parent   Account?  @relation("SubAccounts", fields: [parentId], references: [id])
+  children Account[] @relation("SubAccounts")
+
+  // 逆参照
+  journalLines                JournalLine[]
+  fixedDebitPresets           Preset[]      @relation("PresetFixedDebit")
+  fixedCreditPresets          Preset[]      @relation("PresetFixedCredit")
+  variableTransactions        Transaction[] @relation("TransactionVariableAccount")
+  defaultReceiptPartners      Partner[]     @relation("PartnerDefaultReceiptAccount")
+  mappedVariableImportRows    ImportRow[]   @relation("ImportRowMappedVariableAccount")
+
+  @@unique([userId, code])
+  @@index([userId, searchKey])
+  @@map("accounts")
+}
+
+// ---------------------------------------------------------------------------
+// Partner — 取引先
+// defaultReceiptAccountId: 回収ボタン用のデフォルト入金口座
+// ---------------------------------------------------------------------------
+model Partner {
+  id                      String   @id @default(cuid())
+  userId                  String                        @map("user_id")
+  name                    String
+  code                    String?                                              /// 取引先コード
+  defaultReceiptAccountId String?                       @map("default_receipt_account_id") /// デフォルト入金口座
+  createdAt               DateTime @default(now())      @map("created_at")
+  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user                  User     @relation(fields: [userId], references: [id])
+  defaultReceiptAccount Account? @relation("PartnerDefaultReceiptAccount", fields: [defaultReceiptAccountId], references: [id])
+
+  // 逆参照
+  journalEntries JournalEntry[]
+  transactions   Transaction[]
+  importRows     ImportRow[]
+
+  @@index([userId])
+  @@map("partners")
+}
+
+// ---------------------------------------------------------------------------
+// Preset — 定型仕訳テンプレート
+// 目的: ユーザーに仕訳を直接入力させない
+// ONE_SIDE_FIXED: 片側固定（可変口座を入力）
+// TWO_SIDE_FIXED: 両側固定（金額のみ入力）
+// ---------------------------------------------------------------------------
+model Preset {
+  id                      String     @id @default(cuid())
+  userId                  String                           @map("user_id")
+  name                    String
+  kind                    PresetKind
+  fixedDebitAccountId     String?                          @map("fixed_debit_account_id")    /// 固定借方科目
+  fixedCreditAccountId    String?                          @map("fixed_credit_account_id")   /// 固定貸方科目
+  requiresVariableAccount Boolean    @default(false)       @map("requires_variable_account") /// 可変口座の入力が必要か
+  requiresPartner         Boolean    @default(false)       @map("requires_partner")          /// 取引先の入力が必要か
+  createdAt               DateTime   @default(now())       @map("created_at")
+  updatedAt               DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  user               User     @relation(fields: [userId], references: [id])
+  fixedDebitAccount  Account? @relation("PresetFixedDebit", fields: [fixedDebitAccountId], references: [id])
+  fixedCreditAccount Account? @relation("PresetFixedCredit", fields: [fixedCreditAccountId], references: [id])
+
+  // 逆参照
+  transactions Transaction[]
+  importRows   ImportRow[]
+
+  @@index([userId])
+  @@map("presets")
+}
+
+// ---------------------------------------------------------------------------
+// Transaction — 入力値の保存（仕訳を作るための元データ）
+// 1 Transaction = 1 JournalEntry の 1:1 対応
+// ---------------------------------------------------------------------------
+model Transaction {
+  id                String   @id @default(cuid())
+  userId            String                        @map("user_id")
+  presetId          String                        @map("preset_id")
+  txDate            DateTime                      @map("tx_date")             /// 取引日
+  amount            Int                                                       /// 金額（円）
+  description       String?                                                   /// 摘要
+  partnerId         String?                       @map("partner_id")
+  variableAccountId String?                       @map("variable_account_id") /// 可変口座（Preset に応じて入力）
+  createdAt         DateTime @default(now())      @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id])
+  preset          Preset   @relation(fields: [presetId], references: [id])
+  partner         Partner? @relation(fields: [partnerId], references: [id])
+  variableAccount Account? @relation("TransactionVariableAccount", fields: [variableAccountId], references: [id])
+
+  // 逆参照（1:1）
+  journalEntry JournalEntry?
+
+  @@index([userId, txDate])
+  @@map("transactions")
+}
+
+// ---------------------------------------------------------------------------
+// JournalEntry — 仕訳ヘッダ（唯一の会計的ソースオブトゥルース）
+// 仕訳は保存される（再生成しない前提）
+// ---------------------------------------------------------------------------
+model JournalEntry {
+  id            String        @id @default(cuid())
+  userId        String                              @map("user_id")
+  entryDate     DateTime                            @map("entry_date")     /// 仕訳日
+  description   String?                                                    /// 摘要
+  origin        JournalOrigin                                              /// 発生元種別
+  partnerId     String?                             @map("partner_id")
+  transactionId String?       @unique               @map("transaction_id") /// 1:1 対応（nullable: IMPORT/DEPRECIATION/OPENING は Transaction なし）
+  createdAt     DateTime      @default(now())       @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id])
+  partner     Partner?     @relation(fields: [partnerId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  // 逆参照
+  lines            JournalLine[]
+  depreciationRuns DepreciationRun[]
+
+  @@index([userId, entryDate])
+  @@map("journal_entries")
+}
+
+// ---------------------------------------------------------------------------
+// JournalLine — 仕訳明細
+// debit / credit は排他的に使用（片方が 0）
+// 借方合計 = 貸方合計はアプリ側で保証
+// ---------------------------------------------------------------------------
+model JournalLine {
+  id             String   @id @default(cuid())
+  journalEntryId String                        @map("journal_entry_id")
+  accountId      String                        @map("account_id")
+  debit          Int      @default(0)                                  /// 借方金額（円）
+  credit         Int      @default(0)                                  /// 貸方金額（円）
+  taxRateId      String?                       @map("tax_rate_id")
+  taxAmount      Int?                          @map("tax_amount")      /// 消費税額（円）
+  createdAt      DateTime @default(now())      @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  entry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  account Account      @relation(fields: [accountId], references: [id])
+  taxRate TaxRate?     @relation(fields: [taxRateId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_lines")
+}
+
+// ---------------------------------------------------------------------------
+// ImportSession — バルクインポートのセッション管理
+// ---------------------------------------------------------------------------
+model ImportSession {
+  id        String       @id @default(cuid())
+  userId    String                             @map("user_id")
+  status    ImportStatus @default(DRAFT)                        /// DRAFT / APPLIED
+  createdAt DateTime     @default(now())       @map("created_at")
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  user User        @relation(fields: [userId], references: [id])
+  rows ImportRow[]
+
+  @@index([userId])
+  @@map("import_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// ImportRow — インポートの各行（下書き）
+// マッピング完了後に Transaction + JournalEntry を生成
+// ---------------------------------------------------------------------------
+model ImportRow {
+  id                      String   @id @default(cuid())
+  importSessionId         String                        @map("import_session_id")
+  rowDate                 DateTime                      @map("row_date")                   /// 明細日付
+  memo                    String?                                                          /// 明細メモ
+  signedAmount            Int                           @map("signed_amount")              /// 符号付き金額（入金: 正、出金: 負）
+  mappedPresetId          String?                       @map("mapped_preset_id")           /// マッピング先プリセット
+  mappedVariableAccountId String?                       @map("mapped_variable_account_id") /// マッピング先可変口座
+  mappedPartnerId         String?                       @map("mapped_partner_id")          /// マッピング先取引先
+  transactionId           String?                       @map("transaction_id")             /// 生成された Transaction のID
+  createdAt               DateTime @default(now())      @map("created_at")
+  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at")
+
+  importSession         ImportSession @relation(fields: [importSessionId], references: [id])
+  mappedPreset          Preset?       @relation(fields: [mappedPresetId], references: [id])
+  mappedVariableAccount Account?      @relation("ImportRowMappedVariableAccount", fields: [mappedVariableAccountId], references: [id])
+  mappedPartner         Partner?      @relation(fields: [mappedPartnerId], references: [id])
+
+  @@index([importSessionId])
+  @@map("import_rows")
+}
+
+// ---------------------------------------------------------------------------
+// FixedAsset — 固定資産台帳（最低限）
+// ---------------------------------------------------------------------------
+model FixedAsset {
+  id              String   @id @default(cuid())
+  userId          String                        @map("user_id")
+  name            String                                          /// 資産名
+  acquiredOn      DateTime                      @map("acquired_on")      /// 取得日
+  cost            Int                                                    /// 取得価額（円）
+  usefulLifeYears Int                           @map("useful_life_years") /// 耐用年数
+  createdAt       DateTime @default(now())      @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id])
+  depreciationRuns DepreciationRun[]
+
+  @@index([userId])
+  @@map("fixed_assets")
+}
+
+// ---------------------------------------------------------------------------
+// DepreciationRun — 減価償却の実行記録
+// 各年度の償却額と、それに対応する仕訳を紐付ける
+// ---------------------------------------------------------------------------
+model DepreciationRun {
+  id             String   @id @default(cuid())
+  fixedAssetId   String                        @map("fixed_asset_id")
+  fiscalYear     Int                           @map("fiscal_year")      /// 対象年度
+  amount         Int                                                    /// 償却額（円）
+  postedOn       DateTime                      @map("posted_on")        /// 計上日
+  journalEntryId String                        @map("journal_entry_id") /// 対応する仕訳
+  createdAt      DateTime @default(now())      @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  fixedAsset   FixedAsset   @relation(fields: [fixedAssetId], references: [id])
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([fixedAssetId, fiscalYear])
+  @@map("depreciation_runs")
 }

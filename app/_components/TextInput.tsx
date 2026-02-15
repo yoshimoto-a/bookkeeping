@@ -4,12 +4,12 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 type Props = {
-  type: "email" | "password" | "text";
-  placeholder: string;
-  disabled: boolean;
+  type?: "email" | "password" | "text";
+  placeholder?: string;
+  disabled?: boolean;
 } & Omit<React.ComponentProps<"input">, "className">;
 
-export const TextInput = ({ type, placeholder, disabled, ...rest }: Props) => {
+export const TextInput = ({ type = "text", placeholder, disabled, ...rest }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
   const inputType = isPassword && showPassword ? "text" : type;
@@ -21,7 +21,7 @@ export const TextInput = ({ type, placeholder, disabled, ...rest }: Props) => {
         placeholder={placeholder}
         disabled={disabled}
         {...rest}
-        className="w-full rounded-lg border border-zinc-300 bg-transparent px-4 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:text-zinc-50 dark:focus:border-zinc-400"
+        className="w-full rounded border border-zinc-300 bg-transparent px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 disabled:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-50 dark:focus:border-zinc-400 dark:disabled:bg-zinc-700"
       />
       {isPassword && (
         <button

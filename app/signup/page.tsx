@@ -9,10 +9,10 @@ import {
   type AuthFormData,
   type SignupErrorResponse,
 } from "@/app/_types/auth";
-import { TextInput } from "@/app/_components/auth/TextInput";
-import { PrimaryButton } from "@/app/_components/auth/PrimaryButton";
-import { SecondaryLink } from "@/app/_components/auth/SecondaryLink";
-import { FormError } from "@/app/_components/auth/FormError";
+import { TextInput } from "@/app/_components/TextInput";
+import { PrimaryButton } from "@/app/_components/PrimaryButton";
+import { SecondaryLink } from "@/app/_components/SecondaryLink";
+import { FormError } from "@/app/_components/FormError";
 
 export const SignupPage = () => {
   const router = useRouter();
