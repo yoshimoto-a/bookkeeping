@@ -1,6 +1,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { AccountWithMeta, FiscalYearSettingData } from "@/app/_types/settings";
+import type { PresetWithAccounts } from "@/app/_types/preset";
 
 export const getAccountsWithMeta = async (userId: string): Promise<AccountWithMeta[]> => {
   const [rawAccounts, referencedAccountIds] = await Promise.all([
@@ -56,4 +57,34 @@ export const getFiscalYears = async (userId: string): Promise<number[]> => {
     ...existingSettings.map((s) => s.fiscalYear),
   ]);
   return [...yearSet].sort((a, b) => b - a);
+};
+
+export const getPresetsWithMeta = async (userId: string): Promise<PresetWithAccounts[]> => {
+  const [rawPresets, referencedPresetIds] = await Promise.all([
+    prisma.preset.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        kind: true,
+        fixedDebitAccount: { select: { id: true, name: true } },
+        fixedCreditAccount: { select: { id: true, name: true } },
+        requiresVariableAccount: true,
+        requiresPartner: true,
+      },
+    }),
+    prisma.transaction
+      .findMany({
+        where: { userId },
+        select: { presetId: true },
+        distinct: ["presetId"],
+      })
+      .then((rows) => new Set(rows.map((r) => r.presetId))),
+  ]);
+
+  return rawPresets.map((p) => ({
+    ...p,
+    isReferenced: referencedPresetIds.has(p.id),
+  }));
 };

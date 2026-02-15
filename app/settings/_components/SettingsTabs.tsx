@@ -2,23 +2,27 @@
 
 import { useState } from "react";
 import type { AccountWithMeta, FiscalYearSettingData } from "@/app/_types/settings";
+import type { PresetWithAccounts } from "@/app/_types/preset";
 import { AccountList } from "./AccountList";
 import { TaxStatusForm } from "./TaxStatusForm";
+import { PresetList } from "./PresetList";
 
 type Props = {
   accounts: AccountWithMeta[];
+  presets: PresetWithAccounts[];
   setting: FiscalYearSettingData;
   fiscalYear: number;
 };
 
-type Tab = "accounts" | "taxStatus";
+type Tab = "accounts" | "taxStatus" | "presets";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "accounts", label: "勘定科目" },
   { key: "taxStatus", label: "課税区分" },
+  { key: "presets", label: "定型仕訳" },
 ];
 
-export const SettingsTabs = ({ accounts, setting, fiscalYear }: Props) => {
+export const SettingsTabs = ({ accounts, presets, setting, fiscalYear }: Props) => {
   const [activeTab, setActiveTab] = useState<Tab>("accounts");
 
   return (
@@ -41,6 +45,7 @@ export const SettingsTabs = ({ accounts, setting, fiscalYear }: Props) => {
 
       {activeTab === "accounts" && <AccountList accounts={accounts} />}
       {activeTab === "taxStatus" && <TaxStatusForm fiscalYear={fiscalYear} setting={setting} />}
+      {activeTab === "presets" && <PresetList presets={presets} accounts={accounts} />}
     </div>
   );
 };
