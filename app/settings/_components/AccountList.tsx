@@ -109,11 +109,6 @@ export const AccountList = ({ accounts }: Props) => {
                               )}
                             </button>
                             <span>{account.name}</span>
-                            {account.children.length > 0 && (
-                              <span className="ml-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 group-hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300">
-                                補助 {account.children.length}
-                              </span>
-                            )}
                           </div>
                         </td>
                         <td className="px-4 py-2 text-right">

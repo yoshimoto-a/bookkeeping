@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
 import {
   accountFormSchema,
+  taxStatusFormSchema,
   type AccountFormData,
+  type TaxStatusFormData,
   type ActionResult,
 } from "@/app/_types/settings";
 
@@ -131,6 +133,32 @@ export const deleteAccount = async (id: string): Promise<ActionResult> => {
   }
 
   await prisma.account.delete({ where: { id } });
+
+  revalidatePath("/settings");
+  return { success: true };
+};
+
+export const upsertFiscalYearSetting = async (
+  fiscalYear: number,
+  data: TaxStatusFormData
+): Promise<ActionResult> => {
+  const user = await getAuthenticatedUser();
+  const parsed = taxStatusFormSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+
+  await prisma.fiscalYearSetting.upsert({
+    where: { userId_fiscalYear: { userId: user.id, fiscalYear } },
+    create: {
+      userId: user.id,
+      fiscalYear,
+      taxStatus: parsed.data.taxStatus,
+    },
+    update: {
+      taxStatus: parsed.data.taxStatus,
+    },
+  });
 
   revalidatePath("/settings");
   return { success: true };

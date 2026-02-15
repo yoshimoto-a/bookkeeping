@@ -44,6 +44,12 @@ enum JournalOrigin {
   OPENING      // 期首残高
 }
 
+// 消費税の課税区分（年度単位でユーザーが設定）
+enum TaxStatus {
+  EXEMPT  // 免税事業者
+  TAXABLE // 課税事業者
+}
+
 // インポートセッションのステータス
 enum ImportStatus {
   DRAFT   // 下書き（マッピング中）
@@ -66,6 +72,24 @@ model TaxRate {
 }
 
 // ---------------------------------------------------------------------------
+// FiscalYearSetting — 年度ごとの会計設定
+// 課税区分（免税/課税）を年度単位で管理
+// ---------------------------------------------------------------------------
+model FiscalYearSetting {
+  id         String    @id @default(cuid())
+  userId     String                        @map("user_id")
+  fiscalYear Int                           @map("fiscal_year") /// 対象年度（例: 2025）
+  taxStatus  TaxStatus                     @map("tax_status")  /// 免税 / 課税
+  createdAt  DateTime  @default(now())     @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fiscalYear])
+  @@map("fiscal_year_settings")
+}
+
+// ---------------------------------------------------------------------------
 // User — Supabase認証を想定
 // ---------------------------------------------------------------------------
 model User {
@@ -76,13 +100,14 @@ model User {
   createdAt  DateTime @default(now())      @map("created_at")
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
-  accounts       Account[]
-  partners       Partner[]
-  presets        Preset[]
-  transactions   Transaction[]
-  journalEntries JournalEntry[]
-  importSessions ImportSession[]
-  fixedAssets    FixedAsset[]
+  accounts           Account[]
+  partners           Partner[]
+  presets            Preset[]
+  transactions       Transaction[]
+  journalEntries     JournalEntry[]
+  importSessions     ImportSession[]
+  fixedAssets        FixedAsset[]
+  fiscalYearSettings FiscalYearSetting[]
 
   @@map("users")
 }
