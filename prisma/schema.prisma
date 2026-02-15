@@ -7,63 +7,73 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-        
+
+// 勘定科目の分類
 enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  REVENUE
-  EXPENSE
+  ASSET      // 資産
+  LIABILITY  // 負債
+  EQUITY     // 純資産
+  REVENUE    // 収益
+  EXPENSE    // 費用
 }
 
+// 税込・税抜の表示方式
 enum TaxMethod {
-  TAX_INCLUSIVE
-  TAX_EXCLUSIVE
+  TAX_INCLUSIVE // 税込
+  TAX_EXCLUSIVE // 税抜
 }
 
+// 消費税の課税区分
 enum BusinessTaxStatus {
-  EXEMPT
-  TAXABLE
+  EXEMPT  // 免税事業者
+  TAXABLE // 課税事業者
 }
 
+// 入金消込の種別
 enum AllocationType {
-  NORMAL
-  FEE
-  DISCOUNT
+  NORMAL   // 通常消込
+  FEE      // 振込手数料（支払手数料として仕訳）
+  DISCOUNT // 値引き（売上値引として仕訳）
 }
 
+// 仕訳の発生元種別
 enum EntrySourceType {
-  OPENING_BALANCE
-  SALE
-  PAYMENT
-  FIXED_COST
-  DEPRECIATION
-  CANCELLATION
+  OPENING_BALANCE // 期首残高
+  SALE            // 売上
+  PAYMENT         // 入金
+  FIXED_COST      // 固定費・経費
+  DEPRECIATION    // 減価償却
+  CANCELLATION    // 取消
 }
 
+// 借方・貸方
 enum Side {
-  DEBIT
-  CREDIT
+  DEBIT  // 借方
+  CREDIT // 貸方
 }
 
+// 固定資産の区分
 enum AssetCategory {
-  NORMAL
-  SMALL_AMOUNT
-  BULK_3YEAR
-  IMMEDIATE
+  NORMAL       // 通常償却（耐用年数に従う）
+  SMALL_AMOUNT // 少額減価償却資産（10万円未満、取得時に全額費用）
+  BULK_3YEAR   // 一括償却資産（20万円未満、3年均等償却）
+  IMMEDIATE    // 少額減価償却資産の特例（30万円未満、青色申告者、取得時全額費用）
 }
 
+// 減価償却の方法
 enum DepreciationMethod {
-  STRAIGHT_LINE
-  DECLINING_BALANCE
+  STRAIGHT_LINE     // 定額法
+  DECLINING_BALANCE // 定率法
 }
 
+// ユーザー
 model User {
   id          String   @id @default(cuid()) @map("id")
   supabaseId  String   @unique             @map("supabase_id")
   email       String                        @map("email")
   name        String?                       @map("name")
   createdAt   DateTime @default(now())      @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   policies    AccountingPolicy[]
   partners    Partner[]
@@ -79,12 +89,15 @@ model User {
   @@map("users")
 }
 
+// 会計ポリシー（年度単位）
 model AccountingPolicy {
   id                 String            @id @default(cuid()) @map("id")
   userId             String                                @map("user_id")
-  fiscalYear         Int                                   @map("fiscal_year")
-  taxMethod          TaxMethod                             @map("tax_method")
-  businessTaxStatus  BusinessTaxStatus                     @map("business_tax_status")
+  fiscalYear         Int                                   @map("fiscal_year")   /// 対象年度（例: 2025）
+  taxMethod          TaxMethod                             @map("tax_method")    /// 税込 / 税抜
+  businessTaxStatus  BusinessTaxStatus                     @map("business_tax_status") /// 免税 / 課税
+  createdAt          DateTime          @default(now())     @map("created_at")
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -92,15 +105,17 @@ model AccountingPolicy {
   @@map("accounting_policies")
 }
 
+// 取引先
 model Partner {
   id     String @id @default(cuid()) @map("id")
   userId String                        @map("user_id")
   name   String                        @map("name")
-  code   String?                       @map("code")
+  code      String?                       @map("code")  /// 取引先コード
+  createdAt DateTime @default(now())      @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
-  // 逆リレーション（パートナー関連イベント）
   saleEvents       SaleEvent[]
   fixedCostEvents  FixedCostEvent[]
   fixedAssetEvents FixedAssetEvent[]
@@ -108,12 +123,14 @@ model Partner {
   @@map("partners")
 }
 
+// 税率マスタ（ユーザー共通、シードで投入）
 model TaxRate {
   id      String @id @default(cuid()) @map("id")
-  name    String @unique               @map("name")
-  rateBps Int                           @map("rate_bps")
+  name    String @unique               @map("name")    /// "標準10%", "軽減8%" など
+  rateBps   Int                           @map("rate_bps") /// bps（10% → 1000）
+  createdAt DateTime @default(now())      @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 逆リレーション
   saleEvents       SaleEvent[]
   fixedCostEvents  FixedCostEvent[]
   fixedAssetEvents FixedAssetEvent[]
@@ -122,17 +139,19 @@ model TaxRate {
   @@map("tax_rates")
 }
 
+// 勘定科目
 model Account {
   id             String      @id @default(cuid()) @map("id")
   userId         String                        @map("user_id")
-  code           String                        @map("code")
-  name           String                        @map("name")
-  type           AccountType                   @map("type")
-  isOwnerAccount Boolean     @default(false)   @map("is_owner_account")
+  code           String                        @map("code")             /// 科目コード
+  name           String                        @map("name")             /// 科目名
+  type           AccountType                   @map("type")             /// 資産/負債/純資産/収益/費用
+  isOwnerAccount Boolean     @default(false)   @map("is_owner_account") /// オーナー勘定フラグ（事業主貸・事業主借・元入金）
+  createdAt      DateTime    @default(now())   @map("created_at")
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
-  // 逆リレーション（アカウント参照元）
   paymentEvents          PaymentEvent[]
   openingBalances        OpeningBalance[]
   journalEntryLines      JournalEntryLine[]
@@ -143,40 +162,43 @@ model Account {
   @@map("accounts")
 }
 
+// 売上イベント（役務ベース）— ソースオブトゥルース
 model SaleEvent {
   id          String   @id @default(cuid()) @map("id")
   userId      String                        @map("user_id")
   partnerId   String?                       @map("partner_id")
-  date        DateTime                      @map("date")
-  description String                        @map("description")
-  amount      Int                           @map("amount")
+  date        DateTime                      @map("date")         /// 売上計上日（役務提供日）
+  description String                        @map("description")  /// 摘要
+  amount      Int                           @map("amount")       /// 税込金額（円）
   taxRateId   String                        @map("tax_rate_id")
   createdAt   DateTime @default(now())      @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelled")
+  cancelledEventId String?                  @map("cancelled_event_id") /// 取消対象の元イベントID
+  isCancelled      Boolean  @default(false) @map("is_cancelled")      /// 取消済みフラグ
 
   user    User      @relation(fields: [userId], references: [id])
   partner Partner?  @relation(fields: [partnerId], references: [id])
   taxRate TaxRate   @relation(fields: [taxRateId], references: [id])
 
-  // 逆リレーション
   allocations PaymentAllocation[]
 
   @@map("sale_events")
 }
 
+// 入金イベント — ソースオブトゥルース
 model PaymentEvent {
   id          String   @id @default(cuid()) @map("id")
   userId      String                        @map("user_id")
-  date        DateTime                      @map("date")
+  date        DateTime                      @map("date")        /// 入金日
   description String                        @map("description")
-  amount      Int                           @map("amount")
-  accountId   String                        @map("account_id")
+  amount      Int                           @map("amount")      /// 入金総額（円）
+  accountId   String                        @map("account_id")  /// 入金先（普通預金など）
   createdAt   DateTime @default(now())      @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelled")
+  cancelledEventId String?                  @map("cancelled_event_id") /// 取消対象の元イベントID
+  isCancelled      Boolean  @default(false) @map("is_cancelled")      /// 取消済みフラグ
 
   user    User    @relation(fields: [userId], references: [id])
   account Account @relation(fields: [accountId], references: [id])
@@ -185,12 +207,15 @@ model PaymentEvent {
   @@map("payment_events")
 }
 
+// 入金消込明細
 model PaymentAllocation {
   id             String        @id @default(cuid()) @map("id")
   paymentEventId String                        @map("payment_event_id")
   saleEventId    String                        @map("sale_event_id")
-  amount         Int                           @map("amount")
-  type           AllocationType                @map("type")
+  amount         Int                           @map("amount") /// 充当金額（円）
+  type           AllocationType                @map("type")   /// NORMAL / FEE / DISCOUNT
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
 
   payment PaymentEvent @relation(fields: [paymentEventId], references: [id])
   sale    SaleEvent    @relation(fields: [saleEventId], references: [id])
@@ -198,21 +223,23 @@ model PaymentAllocation {
   @@map("payment_allocations")
 }
 
+// 固定費・経費イベント — ソースオブトゥルース
 model FixedCostEvent {
   id               String   @id @default(cuid()) @map("id")
   userId           String                        @map("user_id")
   partnerId        String?                       @map("partner_id")
-  date             DateTime                      @map("date")
+  date             DateTime                      @map("date")               /// 支払日
   description      String                        @map("description")
-  amount           Int                           @map("amount")
+  amount           Int                           @map("amount")             /// 税込金額（円）
   taxRateId        String                        @map("tax_rate_id")
-  accountId        String                        @map("account_id")
-  paymentAccountId String                        @map("payment_account_id")
-  businessRatio    Int                           @map("business_ratio")
+  accountId        String                        @map("account_id")         /// 費用科目（通信費など）
+  paymentAccountId String                        @map("payment_account_id") /// 貸方科目（現金、普通預金など）
+  businessRatio    Int                           @map("business_ratio")     /// 事業按分率（bps。100% → 10000）
   createdAt        DateTime @default(now())      @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelcelled")
+  cancelledEventId String?                  @map("cancelled_event_id") /// 取消対象の元イベントID
+  isCancelled      Boolean  @default(false) @map("is_cancelled")      /// 取消済みフラグ
 
   user           User      @relation(fields: [userId], references: [id])
   partner        Partner?  @relation(fields: [partnerId], references: [id])
@@ -223,22 +250,24 @@ model FixedCostEvent {
   @@map("fixed_cost_events")
 }
 
+// 固定資産イベント — ソースオブトゥルース
 model FixedAssetEvent {
   id                 String   @id @default(cuid()) @map("id")
   userId             String                        @map("user_id")
   partnerId          String?                       @map("partner_id")
-  date               DateTime                      @map("date")
-  description        String                        @map("description")
-  amount             Int                           @map("amount")
+  date               DateTime                      @map("date")                /// 取得日
+  description        String                        @map("description")         /// 資産名
+  amount             Int                           @map("amount")              /// 取得価額（円）
   taxRateId          String                        @map("tax_rate_id")
-  usefulLife         Int                           @map("useful_life")
-  assetCategory      AssetCategory                 @map("asset_category")
-  depreciationMethod DepreciationMethod            @map("depreciation_method")
-  businessRatio      Int                           @map("business_ratio")
+  usefulLife         Int                           @map("useful_life")         /// 耐用年数
+  assetCategory      AssetCategory                 @map("asset_category")      /// 資産区分
+  depreciationMethod DepreciationMethod            @map("depreciation_method") /// 償却方法
+  businessRatio      Int                           @map("business_ratio")      /// 事業按分率（bps）
   createdAt          DateTime @default(now())      @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
-  cancelledEventId String?                  @map("cancelled_event_id")
-  isCancelled      Boolean  @default(false) @map("is_cancelled")
+  cancelledEventId String?                  @map("cancelled_event_id") /// 取消対象の元イベントID
+  isCancelled      Boolean  @default(false) @map("is_cancelled")      /// 取消済みフラグ
 
   user    User     @relation(fields: [userId], references: [id])
   partner Partner? @relation(fields: [partnerId], references: [id])
@@ -247,13 +276,16 @@ model FixedAssetEvent {
   @@map("fixed_asset_events")
 }
 
+// 期首残高
 model OpeningBalance {
   id         String  @id @default(cuid()) @map("id")
   userId     String                        @map("user_id")
-  fiscalYear Int                           @map("fiscal_year")
+  fiscalYear Int                           @map("fiscal_year") /// 対象年度
   accountId  String                        @map("account_id")
-  side       Side                          @map("side")
-  amount     Int                           @map("amount")
+  side       Side                          @map("side")        /// 借方 / 貸方
+  amount     Int                           @map("amount")      /// 期首残高（円、正の値）
+  createdAt  DateTime @default(now())      @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
   user    User    @relation(fields: [userId], references: [id])
   account Account @relation(fields: [accountId], references: [id])
@@ -262,15 +294,17 @@ model OpeningBalance {
   @@map("opening_balances")
 }
 
+// 仕訳ヘッダー（派生データ — rebuild で再生成可能）
 model JournalEntry {
   id            String          @id @default(cuid()) @map("id")
   userId        String                                @map("user_id")
   date          DateTime                              @map("date")
-  description   String                                @map("description")
-  sourceType    EntrySourceType                       @map("source_type")
-  sourceEventId String                                @map("source_event_id")
-  generation    Int                                   @map("generation")
-  createdAt     DateTime @default(now())              @map("created_at")
+  description   String                                @map("description")    /// 摘要
+  sourceType    EntrySourceType                       @map("source_type")    /// 発生元種別
+  sourceEventId String                                @map("source_event_id") /// 元イベントのID
+  generation    Int                                   @map("generation")     /// 生成世代番号
+  createdAt     DateTime        @default(now())       @map("created_at")
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at")
 
   user   User   @relation(fields: [userId], references: [id])
   lines  JournalEntryLine[]
@@ -278,14 +312,17 @@ model JournalEntry {
   @@map("journal_entries")
 }
 
+// 仕訳明細（派生データ）
 model JournalEntryLine {
   id             String   @id @default(cuid()) @map("id")
   journalEntryId String                        @map("journal_entry_id")
   accountId      String                        @map("account_id")
-  debit          Int                           @map("debit")
-  credit         Int                           @map("credit")
+  debit          Int                           @map("debit")      /// 借方（円）
+  credit         Int                           @map("credit")     /// 貸方（円）
   taxRateId      String?                       @map("tax_rate_id")
-  taxAmount      Int                           @map("tax_amount")
+  taxAmount      Int                           @map("tax_amount") /// 消費税額（円）
+  createdAt      DateTime @default(now())      @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
 
   entry  JournalEntry @relation(fields: [journalEntryId], references: [id])
   account Account      @relation(fields: [accountId], references: [id])
@@ -294,12 +331,14 @@ model JournalEntryLine {
   @@map("journal_entry_lines")
 }
 
+// 世代管理（rebuild の世代番号を管理）
 model GenerationLog {
   id         String   @id @default(cuid()) @map("id")
   userId     String                        @map("user_id")
-  fiscalYear Int                           @map("fiscal_year")
-  generation Int                           @map("generation")
-  createdAt  DateTime @default(now())      @map("created_at")
+  fiscalYear Int                           @map("fiscal_year") /// 対象年度
+  generation Int                           @map("generation")  /// 世代番号
+  createdAt  DateTime @default(now())      @map("created_at")  /// 生成日時
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
