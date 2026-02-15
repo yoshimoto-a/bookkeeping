@@ -6,6 +6,11 @@ import toast from "react-hot-toast";
 import { TriangleAlert } from "lucide-react";
 import { accountFormSchema, type AccountFormData, type AccountWithMeta } from "@/app/_types/settings";
 import { createAccount, updateAccount } from "@/app/settings/actions";
+import { TextInput } from "@/app/_components/TextInput";
+import { SelectInput } from "@/app/_components/SelectInput";
+import { FormError } from "@/app/_components/FormError";
+import { PrimaryButton } from "@/app/_components/PrimaryButton";
+import { SecondaryButton } from "@/app/_components/SecondaryButton";
 
 type Props = {
   account: AccountWithMeta | null;
@@ -87,44 +92,33 @@ export const AccountFormModal = ({ account, parentId, accounts, onClose }: Props
 
           <div>
             <label className="mb-1 block text-sm font-medium">科目コード</label>
-            <input
+            <TextInput
               {...register("code")}
               disabled={isEdit && account.isOwnerAccount}
-              className="w-full rounded border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:disabled:bg-zinc-700"
             />
-            {errors.code && (
-              <p className="mt-1 text-xs text-red-500">{errors.code.message}</p>
-            )}
+            <FormError message={errors.code?.message} />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium">科目名</label>
-            <input
-              {...register("name")}
-              className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-            />
-            {errors.name && (
-              <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
-            )}
+            <TextInput {...register("name")} />
+            <FormError message={errors.name?.message} />
           </div>
 
           {!isSubAccount && (
             <div>
               <label className="mb-1 block text-sm font-medium">分類</label>
-              <select
+              <SelectInput
                 {...register("type")}
                 disabled={isEdit && (account.isOwnerAccount || account.children.length > 0)}
-                className="w-full rounded border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:disabled:bg-zinc-700"
               >
                 {Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </select>
-              {errors.type && (
-                <p className="mt-1 text-xs text-red-500">{errors.type.message}</p>
-              )}
+              </SelectInput>
+              <FormError message={errors.type?.message} />
             </div>
           )}
 
@@ -138,20 +132,12 @@ export const AccountFormModal = ({ account, parentId, accounts, onClose }: Props
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            >
+            <SecondaryButton type="button" onClick={onClose}>
               キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
+            </SecondaryButton>
+            <PrimaryButton type="submit" disabled={isSubmitting}>
               {isSubmitting ? "保存中..." : "保存"}
-            </button>
+            </PrimaryButton>
           </div>
         </form>
       </div>

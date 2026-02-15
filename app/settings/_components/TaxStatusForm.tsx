@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { taxStatusFormSchema, type TaxStatusFormData, type FiscalYearSettingData } from "@/app/_types/settings";
 import { upsertFiscalYearSetting } from "@/app/settings/actions";
+import { PrimaryButton } from "@/app/_components/PrimaryButton";
 
 type Props = {
   fiscalYear: number;
@@ -50,13 +51,9 @@ export const TaxStatusForm = ({ fiscalYear, setting }: Props) => {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
+      <PrimaryButton type="submit" disabled={isSubmitting}>
         {isSubmitting ? "保存中..." : "保存"}
-      </button>
+      </PrimaryButton>
     </form>
   );
 };
