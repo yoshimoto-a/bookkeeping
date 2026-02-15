@@ -143,6 +143,7 @@ model TaxRate {
 model Account {
   id             String      @id @default(cuid()) @map("id")
   userId         String                        @map("user_id")
+  parentId       String?                       @map("parent_id")        /// 親科目ID（補助科目の場合のみ）
   code           String                        @map("code")             /// 科目コード
   name           String                        @map("name")             /// 科目名
   type           AccountType                   @map("type")             /// 資産/負債/純資産/収益/費用
@@ -150,7 +151,9 @@ model Account {
   createdAt      DateTime    @default(now())   @map("created_at")
   updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  parent   Account? @relation("SubAccounts", fields: [parentId], references: [id])
+  children Account[] @relation("SubAccounts")
 
   paymentEvents          PaymentEvent[]
   openingBalances        OpeningBalance[]
