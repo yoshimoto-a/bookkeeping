@@ -50,144 +50,42 @@ npx prisma studio
 ## ER図
 ```mermaid
 erDiagram
-    User {
-        string id PK
-        string supabaseId
-        string email
-        datetime createdAt
-    }
 
-    AccountingPolicy {
-        string id PK
-        string userId FK
-        int fiscalYear
-        enum taxMethod
-        enum businessTaxStatus
-    }
+User ||--o{ Account : owns
+User ||--o{ Partner : owns
+User ||--o{ Preset : owns
+User ||--o{ Transaction : inputs
+User ||--o{ JournalEntry : posts
+User ||--o{ ImportSession : runs
+User ||--o{ FixedAsset : owns
+User ||--o{ FiscalYearSetting : config
 
-    Partner {
-        string id PK
-        string userId FK
-        string name
-    }
+Account ||--o{ Account : parent_child
+Account ||--o{ JournalLine : used_in
+Account ||--o{ Transaction : variable_account
+Account ||--o{ Preset : fixed_debit
+Account ||--o{ Preset : fixed_credit
+Account ||--o{ Partner : default_receipt
+Account ||--o{ ImportRow : mapped_variable
 
-    Account {
-        string id PK
-        string userId FK
-        string code
-        string name
-        enum type
-        boolean isOwnerAccount
-    }
+Partner ||--o{ JournalEntry : related
+Partner ||--o{ Transaction : related
+Partner ||--o{ ImportRow : mapped
 
-    TaxRate {
-        string id PK
-        string name
-        int rateBps
-    }
+Preset ||--o{ Transaction : generates
+Preset ||--o{ ImportRow : mapped
 
-    SaleEvent {
-        string id PK
-        string userId FK
-        string partnerId FK
-        date date
-        int amount
-        string taxRateId FK
-        boolean isCancelled
-    }
+Transaction ||--|| JournalEntry : produces
 
-    PaymentEvent {
-        string id PK
-        string userId FK
-        date date
-        int amount
-        string accountId FK
-    }
+JournalEntry ||--o{ JournalLine : has
+JournalEntry ||--o{ DepreciationRun : created_by
 
-    PaymentAllocation {
-        string id PK
-        string paymentEventId FK
-        string saleEventId FK
-        int amount
-        enum type
-    }
+TaxRate ||--o{ JournalLine : applied
 
-    FixedCostEvent {
-        string id PK
-        string userId FK
-        string accountId FK
-        string paymentAccountId FK
-        int amount
-        int businessRatio
-        string taxRateId FK
-    }
+ImportSession ||--o{ ImportRow : contains
 
-    FixedAssetEvent {
-        string id PK
-        string userId FK
-        int amount
-        int usefulLife
-        enum assetCategory
-        enum depreciationMethod
-        int businessRatio
-    }
+FixedAsset ||--o{ DepreciationRun : depreciates
 
-    OpeningBalance {
-        string id PK
-        string userId FK
-        int fiscalYear
-        string accountId FK
-        enum side
-        int amount
-    }
-
-    JournalEntry {
-        string id PK
-        string userId FK
-        date date
-        enum sourceType
-        string sourceEventId
-        int generation
-    }
-
-    JournalEntryLine {
-        string id PK
-        string journalEntryId FK
-        string accountId FK
-        int debit
-        int credit
-        int taxAmount
-    }
-
-    GenerationLog {
-        string id PK
-        string userId FK
-        int fiscalYear
-        int generation
-    }
-
-
-    User ||--o{ AccountingPolicy : has
-    User ||--o{ Partner : has
-    User ||--o{ Account : has
-    User ||--o{ SaleEvent : records
-    User ||--o{ PaymentEvent : records
-    User ||--o{ FixedCostEvent : records
-    User ||--o{ FixedAssetEvent : records
-    User ||--o{ OpeningBalance : has
-    User ||--o{ JournalEntry : generates
-    User ||--o{ GenerationLog : manages
-
-    Partner ||--o{ SaleEvent : billed_to
-
-    PaymentEvent ||--o{ PaymentAllocation : allocates
-    SaleEvent ||--o{ PaymentAllocation : settled_by
-
-    Account ||--o{ JournalEntryLine : posted_to
-    Account ||--o{ PaymentEvent : deposit
-    Account ||--o{ FixedCostEvent : expense
-    Account ||--o{ OpeningBalance : opening
-
-    JournalEntry ||--o{ JournalEntryLine : contains
+DepreciationRun }o--|| JournalEntry : posts
 
 ```
