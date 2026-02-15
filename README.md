@@ -32,162 +32,188 @@ pnpm start
 pnpm lint
 
 # Prismaクライアント生成
-npx prisma generate
+pnpm prisma generate
 
 # マイグレーション作成
-npx prisma migrate dev --name <migration_name>
+pnpm prisma migrate dev --name <migration_name>
 
 # マイグレーション適用(本番)
-npx prisma migrate deploy
+pnpm prisma migrate deploy
 
 # シードデータ投入
-npx prisma db seed
+pnpm prisma db seed
 
 # Prisma Studio(DBブラウザ)
-npx prisma studio
+pnpm prisma studio
 ```
 
-## ER図
+## ER図（現行）
 ```mermaid
 erDiagram
     User {
         string id PK
         string supabaseId
         string email
+        string name
         datetime createdAt
+        datetime updatedAt
     }
 
-    AccountingPolicy {
+    FiscalYearSetting {
         string id PK
         string userId FK
         int fiscalYear
-        enum taxMethod
-        enum businessTaxStatus
+        enum taxStatus
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Account {
+        string id PK
+        string userId FK
+        string parentId FK
+        string code
+        string name
+        enum type
+        boolean isOwnerAccount
+        datetime createdAt
+        datetime updatedAt
     }
 
     Partner {
         string id PK
         string userId FK
         string name
+        string code
+        string defaultReceiptAccountId FK
+        datetime createdAt
+        datetime updatedAt
     }
 
-    Account {
+    Preset {
         string id PK
         string userId FK
-        string code
-        string name
-        enum type
-        boolean isOwnerAccount
+        enum kind
+        string fixedDebitAccountId FK
+        string fixedCreditAccountId FK
+        boolean requiresVariableAccount
+        boolean requiresPartner
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Transaction {
+        string id PK
+        string userId FK
+        string presetId FK
+        date txDate
+        int amount
+        string description
+        string partnerId FK
+        string variableAccountId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    JournalEntry {
+        string id PK
+        string userId FK
+        date entryDate
+        string description
+        enum origin
+        string partnerId FK
+        string transactionId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    JournalLine {
+        string id PK
+        string journalEntryId FK
+        string accountId FK
+        int debit
+        int credit
+        string taxRateId FK
+        int taxAmount
+        datetime createdAt
+        datetime updatedAt
     }
 
     TaxRate {
         string id PK
         string name
         int rateBps
+        datetime createdAt
+        datetime updatedAt
     }
 
-    SaleEvent {
+    ImportSession {
         string id PK
         string userId FK
-        string partnerId FK
-        date date
-        int amount
-        string taxRateId FK
-        boolean isCancelled
+        enum status
+        datetime createdAt
+        datetime updatedAt
     }
 
-    PaymentEvent {
+    ImportRow {
+        string id PK
+        string importSessionId FK
+        date rowDate
+        string memo
+        int signedAmount
+        string mappedPresetId FK
+        string mappedVariableAccountId FK
+        string mappedPartnerId FK
+        string transactionId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    FixedAsset {
         string id PK
         string userId FK
-        date date
-        int amount
-        string accountId FK
+        string name
+        date acquiredOn
+        int cost
+        int usefulLifeYears
+        datetime createdAt
+        datetime updatedAt
     }
 
-    PaymentAllocation {
+    DepreciationRun {
         string id PK
-        string paymentEventId FK
-        string saleEventId FK
-        int amount
-        enum type
-    }
-
-    FixedCostEvent {
-        string id PK
-        string userId FK
-        string accountId FK
-        string paymentAccountId FK
-        int amount
-        int businessRatio
-        string taxRateId FK
-    }
-
-    FixedAssetEvent {
-        string id PK
-        string userId FK
-        int amount
-        int usefulLife
-        enum assetCategory
-        enum depreciationMethod
-        int businessRatio
-    }
-
-    OpeningBalance {
-        string id PK
-        string userId FK
+        string fixedAssetId FK
         int fiscalYear
-        string accountId FK
-        enum side
         int amount
-    }
-
-    JournalEntry {
-        string id PK
-        string userId FK
-        date date
-        enum sourceType
-        string sourceEventId
-        int generation
-    }
-
-    JournalEntryLine {
-        string id PK
+        date postedOn
         string journalEntryId FK
-        string accountId FK
-        int debit
-        int credit
-        int taxAmount
+        datetime createdAt
+        datetime updatedAt
     }
 
-    GenerationLog {
-        string id PK
-        string userId FK
-        int fiscalYear
-        int generation
-    }
-
-
-    User ||--o{ AccountingPolicy : has
-    User ||--o{ Partner : has
     User ||--o{ Account : has
-    User ||--o{ SaleEvent : records
-    User ||--o{ PaymentEvent : records
-    User ||--o{ FixedCostEvent : records
-    User ||--o{ FixedAssetEvent : records
-    User ||--o{ OpeningBalance : has
-    User ||--o{ JournalEntry : generates
-    User ||--o{ GenerationLog : manages
+    User ||--o{ Partner : has
+    User ||--o{ Preset : has
+    User ||--o{ Transaction : has
+    User ||--o{ JournalEntry : has
+    User ||--o{ ImportSession : has
+    User ||--o{ FixedAsset : has
+    User ||--o{ FiscalYearSetting : has
 
-    Partner ||--o{ SaleEvent : billed_to
+    Account ||--o{ Account : children
+    Account ||--o{ JournalLine : posted_to
+    Account ||--o{ Transaction : variable_of
+    Partner ||--o{ JournalEntry : referenced_by
 
-    PaymentEvent ||--o{ PaymentAllocation : allocates
-    SaleEvent ||--o{ PaymentAllocation : settled_by
+    Preset ||--o{ Transaction : generates
 
-    Account ||--o{ JournalEntryLine : posted_to
-    Account ||--o{ PaymentEvent : deposit
-    Account ||--o{ FixedCostEvent : expense
-    Account ||--o{ OpeningBalance : opening
+    Transaction ||--|{ JournalEntry : creates
 
-    JournalEntry ||--o{ JournalEntryLine : contains
+    JournalEntry ||--o{ JournalLine : contains
 
+    ImportSession ||--o{ ImportRow : has
+
+    FixedAsset ||--o{ DepreciationRun : has
+
+    TaxRate ||--o{ JournalLine : applied_to
 ```
