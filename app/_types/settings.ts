@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AccountType, TaxMethod, BusinessTaxStatus } from "@prisma/client";
+import type { AccountType } from "@prisma/client";
 
 export const accountFormSchema = z.object({
   code: z
@@ -18,13 +18,6 @@ export const accountFormSchema = z.object({
 
 export type AccountFormData = z.infer<typeof accountFormSchema>;
 
-export const policyFormSchema = z.object({
-  taxMethod: z.enum(["TAX_INCLUSIVE", "TAX_EXCLUSIVE"]),
-  businessTaxStatus: z.enum(["EXEMPT", "TAXABLE"]),
-});
-
-export type PolicyFormData = z.infer<typeof policyFormSchema>;
-
 export type AccountWithMeta = {
   id: string;
   code: string;
@@ -35,12 +28,5 @@ export type AccountWithMeta = {
   isReferenced: boolean;
   children: { id: string; code: string; name: string }[];
 };
-
-export type PolicyData = {
-  id: string;
-  fiscalYear: number;
-  taxMethod: TaxMethod;
-  businessTaxStatus: BusinessTaxStatus;
-} | null;
 
 export type ActionResult = { success: true } | { error: string };

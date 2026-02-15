@@ -5,9 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
 import {
   accountFormSchema,
-  policyFormSchema,
   type AccountFormData,
-  type PolicyFormData,
   type ActionResult,
 } from "@/app/_types/settings";
 
@@ -124,61 +122,15 @@ export const deleteAccount = async (id: string): Promise<ActionResult> => {
     return { error: "補助科目を持つ科目は削除できません。先に補助科目を削除してください" };
   }
 
-  const usedInJournalLine = await prisma.journalEntryLine.findFirst({
-    where: { accountId: id },
-  });
-  const usedInPayment = await prisma.paymentEvent.findFirst({
-    where: { accountId: id },
-  });
-  const usedInFixedCostExpense = await prisma.fixedCostEvent.findFirst({
-    where: { accountId: id },
-  });
-  const usedInFixedCostPayment = await prisma.fixedCostEvent.findFirst({
-    where: { paymentAccountId: id },
-  });
-  const usedInOpening = await prisma.openingBalance.findFirst({
+  const usedInJournal = await prisma.journalLine.findFirst({
     where: { accountId: id },
   });
 
-  if (
-    usedInJournalLine ||
-    usedInPayment ||
-    usedInFixedCostExpense ||
-    usedInFixedCostPayment ||
-    usedInOpening
-  ) {
+  if (usedInJournal) {
     return { error: "この勘定科目は使用中のため削除できません" };
   }
 
   await prisma.account.delete({ where: { id } });
-
-  revalidatePath("/settings");
-  return { success: true };
-};
-
-export const upsertAccountingPolicy = async (
-  fiscalYear: number,
-  data: PolicyFormData
-): Promise<ActionResult> => {
-  const user = await getAuthenticatedUser();
-  const parsed = policyFormSchema.safeParse(data);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0].message };
-  }
-
-  await prisma.accountingPolicy.upsert({
-    where: { userId_fiscalYear: { userId: user.id, fiscalYear } },
-    create: {
-      userId: user.id,
-      fiscalYear,
-      taxMethod: parsed.data.taxMethod,
-      businessTaxStatus: parsed.data.businessTaxStatus,
-    },
-    update: {
-      taxMethod: parsed.data.taxMethod,
-      businessTaxStatus: parsed.data.businessTaxStatus,
-    },
-  });
 
   revalidatePath("/settings");
   return { success: true };

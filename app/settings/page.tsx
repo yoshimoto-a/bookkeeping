@@ -1,19 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
-import { FiscalYearSelector } from "./_components/FiscalYearSelector";
 import { SettingsTabs } from "./_components/SettingsTabs";
 
-type Props = {
-  searchParams: Promise<{ fiscalYear?: string }>;
-};
-
-const SettingsPage = async ({ searchParams }: Props) => {
+const SettingsPage = async () => {
   const user = await getAuthenticatedUser();
-  const params = await searchParams;
-  const currentYear = new Date().getFullYear();
-  const fiscalYear = params.fiscalYear ? Number(params.fiscalYear) : currentYear;
 
-  const [rawAccounts, policy, existingPolicies, referencedAccountIds] = await Promise.all([
+  const [rawAccounts, referencedAccountIds] = await Promise.all([
     prisma.account.findMany({
       where: { userId: user.id, parentId: null },
       orderBy: [{ type: "asc" }, { code: "asc" }],
@@ -30,15 +22,7 @@ const SettingsPage = async ({ searchParams }: Props) => {
         },
       },
     }),
-    prisma.accountingPolicy.findUnique({
-      where: { userId_fiscalYear: { userId: user.id, fiscalYear } },
-    }),
-    prisma.accountingPolicy.findMany({
-      where: { userId: user.id },
-      select: { fiscalYear: true },
-      orderBy: { fiscalYear: "desc" },
-    }),
-    prisma.journalEntryLine
+    prisma.journalLine
       .findMany({
         where: { entry: { userId: user.id } },
         select: { accountId: true },
@@ -52,23 +36,12 @@ const SettingsPage = async ({ searchParams }: Props) => {
     isReferenced: referencedAccountIds.has(a.id),
   }));
 
-  const yearSet = new Set([
-    currentYear,
-    ...existingPolicies.map((p) => p.fiscalYear),
-  ]);
-  const years = [...yearSet].sort((a, b) => b - a);
-
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">設定</h1>
-        <FiscalYearSelector years={years} />
       </div>
-      <SettingsTabs
-        accounts={accounts}
-        policy={policy}
-        fiscalYear={fiscalYear}
-      />
+      <SettingsTabs accounts={accounts} />
     </div>
   );
 };
