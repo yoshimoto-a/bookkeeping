@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
-import FiscalYearSelector from "./_components/FiscalYearSelector";
 import { SettingsTabs } from "./_components/SettingsTabs";
+import { SettingsHeader } from "./_components/SettingsHeader";
 
 type Props = {
   searchParams: Promise<{ fiscalYear?: string }>;
@@ -60,10 +60,7 @@ const SettingsPage = async ({ searchParams }: Props) => {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">設定</h1>
-        <FiscalYearSelector years={years} />
-      </div>
+      <SettingsHeader years={years} />
       <SettingsTabs
         accounts={accounts}
         setting={setting}
