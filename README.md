@@ -47,7 +47,7 @@ pnpm prisma db seed
 pnpm prisma studio
 ```
 
-## ER図（現行）
+## ER図
 ```mermaid
 erDiagram
     User {
