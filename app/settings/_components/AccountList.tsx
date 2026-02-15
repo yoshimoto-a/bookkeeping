@@ -3,30 +3,15 @@
 import { Fragment, useState } from "react";
 import { Pencil, Trash2, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
-import type { AccountType } from "@prisma/client";
 import type { AccountWithMeta } from "@/app/_types/settings";
 import { deleteAccount } from "@/app/settings/actions";
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER } from "@/lib/constants/accountTypes";
+import { PrimaryButton } from "@/app/_components/PrimaryButton";
 import { AccountFormModal } from "./AccountFormModal";
 
 type Props = {
   accounts: AccountWithMeta[];
 };
-
-const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-  ASSET: "資産",
-  LIABILITY: "負債",
-  EQUITY: "純資産",
-  REVENUE: "収益",
-  EXPENSE: "費用",
-};
-
-const ACCOUNT_TYPE_ORDER: AccountType[] = [
-  "ASSET",
-  "LIABILITY",
-  "EQUITY",
-  "REVENUE",
-  "EXPENSE",
-];
 
 type ModalState =
   | { mode: "closed" }
@@ -67,12 +52,9 @@ export const AccountList = ({ accounts }: Props) => {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">勘定科目一覧</h3>
-        <button
-          onClick={() => setModalState({ mode: "create", parentId: null })}
-          className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white shadow-sm hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <PrimaryButton type="button" onClick={() => setModalState({ mode: "create", parentId: null })}>
           追加
-        </button>
+        </PrimaryButton>
       </div>
 
       <div className="space-y-6">

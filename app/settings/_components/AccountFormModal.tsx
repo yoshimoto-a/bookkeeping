@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { TriangleAlert } from "lucide-react";
 import { accountFormSchema, type AccountFormData, type AccountWithMeta } from "@/app/_types/settings";
 import { createAccount, updateAccount } from "@/app/settings/actions";
+import { ACCOUNT_TYPE_LABELS } from "@/lib/constants/accountTypes";
 import { TextInput } from "@/app/_components/TextInput";
 import { SelectInput } from "@/app/_components/SelectInput";
 import { FormError } from "@/app/_components/FormError";
@@ -17,14 +18,6 @@ type Props = {
   parentId: string | null;
   accounts: AccountWithMeta[];
   onClose: () => void;
-};
-
-const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  ASSET: "資産",
-  LIABILITY: "負債",
-  EQUITY: "純資産",
-  REVENUE: "収益",
-  EXPENSE: "費用",
 };
 
 export const AccountFormModal = ({ account, parentId, accounts, onClose }: Props) => {
