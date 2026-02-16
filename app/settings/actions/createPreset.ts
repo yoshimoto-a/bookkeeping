@@ -19,6 +19,6 @@ export const createPreset = async (data: PresetFormValues): Promise<ActionResult
     },
   });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };

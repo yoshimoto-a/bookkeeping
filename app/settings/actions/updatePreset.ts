@@ -20,6 +20,6 @@ export const updatePreset = async (id: string, data: PresetFormValues): Promise<
     data: presetData,
   });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };

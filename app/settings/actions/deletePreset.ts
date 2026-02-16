@@ -16,6 +16,6 @@ export const deletePreset = async (id: string): Promise<ActionResult> => {
 
   await prisma.preset.delete({ where: { id } });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };

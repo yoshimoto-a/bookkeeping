@@ -37,6 +37,6 @@ export const updateAccount = async (id: string, data: AccountFormData): Promise<
     data: { code, name, type },
   });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };
