@@ -94,7 +94,10 @@ export const AccountFormModal = ({ account, parentId, accounts, onClose }: Props
 
           <div>
             <label className="mb-1 block text-sm font-medium">科目名</label>
-            <TextInput {...register("name")} />
+            <TextInput
+              {...register("name")}
+              disabled={isEdit && account.isOwnerAccount}
+            />
             <FormError message={errors.name?.message} />
           </div>
 

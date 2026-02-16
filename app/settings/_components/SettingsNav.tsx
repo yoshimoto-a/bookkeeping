@@ -6,6 +6,7 @@ export const SettingsNav = () => {
       <NavLink href="/settings/accounts" label="勘定科目" />
       <NavLink href="/settings/tax" label="課税区分" />
       <NavLink href="/settings/presets" label="定型仕訳" />
+      <NavLink href="/settings/partners" label="取引先" />
     </div>
   );
 };

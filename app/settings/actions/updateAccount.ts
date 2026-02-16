@@ -18,8 +18,8 @@ export const updateAccount = async (id: string, data: AccountFormData): Promise<
   if (!account) return { error: "勘定科目が見つかりません" };
 
   if (account.isOwnerAccount) {
-    if (code !== account.code || type !== account.type) {
-      return { error: "オーナー勘定の科目コード・分類は変更できません" };
+    if (code !== account.code || name !== account.name || type !== account.type) {
+      return { error: "デフォルト勘定の科目コード・科目名・分類は変更できません" };
     }
   }
 
