@@ -15,10 +15,10 @@ type Props = {
 export const AppAutocomplete = ({ label, value, onChange, options, groupBy }: Props) => (
   <Autocomplete
     options={options}
-    groupBy={groupBy ? groupBy : (o) => o.group ?? ""}
+    groupBy={groupBy}
     getOptionLabel={(o) => o.label}
-    value={options.find((o) => o.value === value) ?? null}
-    onChange={(_, opt) => onChange(opt ? opt.value : null)}
+    value={options.find((o) => o.value === value)}
+    onChange={(_, opt) => onChange(opt?.value || null)}
     renderInput={(params) => (
       <TextField
         {...params}
