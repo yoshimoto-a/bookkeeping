@@ -4,7 +4,6 @@ import { FormProvider, useWatch } from "react-hook-form";
 import toast from "react-hot-toast";
 import { TriangleAlert } from "lucide-react";
 import type { PresetFormValues, PresetWithAccounts } from "@/app/_types/preset";
-import { presetFormSchema } from "@/app/_types/preset";
 import type { AccountWithMeta } from "@/app/_types/settings";
 import { createPreset, updatePreset } from "@/app/settings/actions";
 import { PrimaryButton } from "@/app/_components/PrimaryButton";

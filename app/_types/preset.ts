@@ -19,7 +19,7 @@ export const presetFormSchema = z
       .nullable()
       .transform((v) => (v && v.trim() !== "" ? v : null)),
     requiresPartner: z.boolean(),
-    __fixedSide: z.enum(["debit", "credit"]).default("debit"),
+    __fixedSide: z.enum(["debit", "credit"]),
   })
   .superRefine((data, ctx) => {
     if (data.kind === "ONE_SIDE_FIXED") {
@@ -42,15 +42,7 @@ export const presetFormSchema = z
     }
   });
 
-// 入力側（RHF）の型: defaultにより __fixedSide は未入力でも可
-export type PresetFormValues = {
-  name: string;
-  kind: "ONE_SIDE_FIXED" | "TWO_SIDE_FIXED";
-  fixedDebitAccountId: string | null;
-  fixedCreditAccountId: string | null;
-  requiresPartner: boolean;
-  __fixedSide: "debit" | "credit";
-};
+export type PresetFormValues = z.input<typeof presetFormSchema>;
 
 // バリデーション後の型（出力）
 export type PresetFormData = z.infer<typeof presetFormSchema>;
