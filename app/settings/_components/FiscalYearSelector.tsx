@@ -1,25 +1,18 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { TextField, MenuItem } from "@mui/material";
 
 type Props = {
   years: number[];
+  fiscalYear: number;
 };
 
-const FiscalYearSelectorInner = ({ years }: Props) => {
+const FiscalYearSelectorInner = ({ years, fiscalYear }: Props) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // SSR時は何も描画しない（MUIのクライアント専用UIのため）
-  if (typeof window === "undefined") return null;
-
-  const currentYear = searchParams.get("fiscalYear") ?? String(new Date().getFullYear());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("fiscalYear", e.target.value);
-    router.push(`/settings?${params.toString()}`);
+    router.push(`/settings/tax?fiscalYear=${e.target.value}`);
   };
 
   return (
@@ -27,7 +20,7 @@ const FiscalYearSelectorInner = ({ years }: Props) => {
       select
       label="年度"
       size="small"
-      value={currentYear}
+      value={String(fiscalYear)}
       onChange={handleChange}
       sx={{
         minWidth: 140,

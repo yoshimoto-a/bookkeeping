@@ -25,6 +25,6 @@ export const deleteAccount = async (id: string): Promise<ActionResult> => {
 
   await prisma.account.delete({ where: { id } });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };

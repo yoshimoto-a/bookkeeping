@@ -12,7 +12,7 @@ export const usePresetForm = (preset: PresetWithAccounts | null) => {
         fixedDebitAccountId: preset.fixedDebitAccount?.id ?? null,
         fixedCreditAccountId: preset.fixedCreditAccount?.id ?? null,
         requiresPartner: preset.requiresPartner,
-        __fixedSide: "debit",
+        __fixedSide: preset.fixedCreditAccount ? "credit" : "debit",
       }
     : {
         name: "",

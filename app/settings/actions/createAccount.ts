@@ -36,6 +36,6 @@ export const createAccount = async (data: AccountFormData): Promise<ActionResult
     },
   });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };

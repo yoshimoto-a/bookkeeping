@@ -20,6 +20,6 @@ export const upsertFiscalYearSetting = async (
     update: { taxStatus },
   });
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { success: true };
 };

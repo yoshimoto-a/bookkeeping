@@ -17,7 +17,7 @@ export const AppAutocomplete = ({ label, value, onChange, options, groupBy }: Pr
     options={options}
     groupBy={groupBy}
     getOptionLabel={(o) => o.label}
-    value={options.find((o) => o.value === value)}
+    value={options.find((o) => o.value === value) ?? null}
     onChange={(_, opt) => onChange(opt?.value || null)}
     renderInput={(params) => (
       <TextField

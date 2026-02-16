@@ -12,11 +12,11 @@ export const presetFormSchema = z
     }),
     fixedDebitAccountId: z
       .string()
-      .nullable()
+      .nullish()
       .transform((v) => (v && v.trim() !== "" ? v : null)),
     fixedCreditAccountId: z
       .string()
-      .nullable()
+      .nullish()
       .transform((v) => (v && v.trim() !== "" ? v : null)),
     requiresPartner: z.boolean(),
     __fixedSide: z.enum(["debit", "credit"]),
