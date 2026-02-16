@@ -5,3 +5,6 @@ export { upsertFiscalYearSetting } from "./actions/upsertFiscalYearSetting";
 export { createPreset } from "./actions/createPreset";
 export { updatePreset } from "./actions/updatePreset";
 export { deletePreset } from "./actions/deletePreset";
+export { createPartner } from "./actions/createPartner";
+export { updatePartner } from "./actions/updatePartner";
+export { deletePartner } from "./actions/deletePartner";
