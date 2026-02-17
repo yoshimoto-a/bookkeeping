@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { Header } from "@/app/_components/Header";
+import { MuiProvider } from "@/app/_components/MuiProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +32,7 @@ export default function RootLayout({
       >
         <Toaster />
         <Header />
-        {children}
+        <MuiProvider>{children}</MuiProvider>
       </body>
     </html>
   );
