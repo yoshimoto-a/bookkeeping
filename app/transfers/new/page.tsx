@@ -9,7 +9,15 @@ const TransferNewPage = async () => {
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <h1 className="mb-6 text-xl font-bold">振替伝票の登録</h1>
-      <JournalEntryForm accounts={accounts} />
+      <JournalEntryForm
+        accounts={accounts}
+        defaultValues={{
+          entryDate: "",
+          debitLines: [{ accountId: "", amount: 0 }],
+          creditLines: [{ accountId: "", amount: 0 }],
+          description: "",
+        }}
+      />
     </div>
   );
 };

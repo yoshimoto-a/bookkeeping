@@ -41,4 +41,6 @@ export type FiscalYearSettingData = {
   taxStatus: TaxStatus;
 } | null;
 
-export type ActionResult = { success: true } | { error: string };
+export type ActionResult =
+  | { success: true }
+  | { success: false; error: string };

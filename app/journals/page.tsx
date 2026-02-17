@@ -4,15 +4,23 @@ import { getAccountsWithMeta } from "@/app/settings/queries/getAccountsWithMeta"
 import { JournalList } from "./_components/JournalList";
 
 type Props = {
-  searchParams: Promise<{ year?: string; month?: string }>;
+  searchParams: Promise<{ month?: string }>;
+};
+
+const parseMonth = (param?: string): { year: number; month: number } => {
+  const now = new Date();
+  if (param && /^\d{6}$/.test(param)) {
+    const year = Number(param.slice(0, 4));
+    const month = Number(param.slice(4, 6));
+    if (month >= 1 && month <= 12) return { year, month };
+  }
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
 };
 
 const JournalsPage = async ({ searchParams }: Props) => {
   const user = await getAuthenticatedUser();
   const params = await searchParams;
-  const now = new Date();
-  const year = params.year ? Number(params.year) : now.getFullYear();
-  const month = params.month ? Number(params.month) : now.getMonth() + 1;
+  const { year, month } = parseMonth(params.month);
   const [journals, accounts] = await Promise.all([
     getJournalEntries(user.id, year, month),
     getAccountsWithMeta(user.id),

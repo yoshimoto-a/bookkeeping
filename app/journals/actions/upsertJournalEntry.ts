@@ -15,18 +15,29 @@ export const upsertJournalEntry = async (
 ): Promise<ActionResult> => {
   const user = await getAuthenticatedUser();
   const parsed = journalEntryFormSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-  const { entryDate, debitAccountId, creditAccountId, amount, description } =
-    parsed.data;
-
+  const { entryDate, debitLines, creditLines, description } = parsed.data;
   const entryDateValue = new Date(entryDate);
+
+  const lineData = [
+    ...debitLines.map((l) => ({
+      accountId: l.subAccountId || l.accountId,
+      debit: l.amount,
+      credit: 0,
+    })),
+    ...creditLines.map((l) => ({
+      accountId: l.subAccountId || l.accountId,
+      debit: 0,
+      credit: l.amount,
+    })),
+  ];
 
   if (journalEntryId) {
     const existing = await prisma.journalEntry.findFirst({
       where: { id: journalEntryId, userId: user.id },
     });
-    if (!existing) return { error: "仕訳が見つかりません" };
+    if (!existing) return { success: false, error: "仕訳が見つかりません" };
 
     await prisma.$transaction(async (tx) => {
       await tx.journalEntry.update({
@@ -42,20 +53,7 @@ export const upsertJournalEntry = async (
       });
 
       await tx.journalLine.createMany({
-        data: [
-          {
-            journalEntryId,
-            accountId: debitAccountId,
-            debit: amount,
-            credit: 0,
-          },
-          {
-            journalEntryId,
-            accountId: creditAccountId,
-            debit: 0,
-            credit: amount,
-          },
-        ],
+        data: lineData.map((l) => ({ ...l, journalEntryId })),
       });
     });
   } else {
@@ -70,20 +68,10 @@ export const upsertJournalEntry = async (
       });
 
       await tx.journalLine.createMany({
-        data: [
-          {
-            journalEntryId: journalEntry.id,
-            accountId: debitAccountId,
-            debit: amount,
-            credit: 0,
-          },
-          {
-            journalEntryId: journalEntry.id,
-            accountId: creditAccountId,
-            debit: 0,
-            credit: amount,
-          },
-        ],
+        data: lineData.map((l) => ({
+          ...l,
+          journalEntryId: journalEntry.id,
+        })),
       });
     });
   }

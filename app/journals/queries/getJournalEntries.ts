@@ -14,7 +14,7 @@ export const getJournalEntries = async (
       userId,
       entryDate: { gte: from, lt: to },
     },
-    orderBy: { entryDate: "desc" },
+    orderBy: { entryDate: "asc" },
     select: {
       id: true,
       entryDate: true,
@@ -24,27 +24,30 @@ export const getJournalEntries = async (
           accountId: true,
           debit: true,
           credit: true,
-          account: { select: { name: true } },
+          account: {
+            select: {
+              name: true,
+              parentId: true,
+              parent: { select: { name: true } },
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
       },
     },
   });
 
-  return entries.map((e) => {
-    const debitLine = e.lines.find((l) => l.debit > 0);
-    const creditLine = e.lines.find((l) => l.credit > 0);
-
-    return {
-      id: e.id,
-      txDate: e.entryDate,
-      debitAccountId: debitLine?.accountId ?? "",
-      debitAccountName: debitLine?.account.name ?? "—",
-      debitAmount: debitLine?.debit ?? 0,
-      creditAccountId: creditLine?.accountId ?? "",
-      creditAccountName: creditLine?.account.name ?? "—",
-      creditAmount: creditLine?.credit ?? 0,
-      description: e.description,
-    };
-  });
+  return entries.map((e) => ({
+    id: e.id,
+    txDate: e.entryDate,
+    lines: e.lines.map((l) => ({
+      accountId: l.accountId,
+      accountName: l.account.name,
+      parentAccountId: l.account.parentId,
+      parentAccountName: l.account.parent?.name ?? null,
+      debit: l.debit,
+      credit: l.credit,
+    })),
+    description: e.description,
+  }));
 };

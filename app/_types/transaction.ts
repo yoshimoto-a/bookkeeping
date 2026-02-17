@@ -41,14 +41,18 @@ export type PresetForForm = {
   requiresPartner: boolean;
 };
 
+export type JournalLine = {
+  accountId: string;
+  accountName: string;
+  parentAccountId: string | null;
+  parentAccountName: string | null;
+  debit: number;
+  credit: number;
+};
+
 export type JournalRow = {
   id: string;
   txDate: Date;
-  debitAccountId: string;
-  debitAccountName: string;
-  debitAmount: number;
-  creditAccountId: string;
-  creditAccountName: string;
-  creditAmount: number;
+  lines: JournalLine[];
   description: string | null;
 };

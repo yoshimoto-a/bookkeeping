@@ -23,27 +23,35 @@ const formatDate = (date: Date): string =>
 const formatAmount = (amount: number): string =>
   amount.toLocaleString("ja-JP");
 
+const buildLineDefaults = (l: { accountId: string; parentAccountId: string | null; debit: number; credit: number }) => ({
+  accountId: l.parentAccountId ?? l.accountId,
+  subAccountId: l.parentAccountId ? l.accountId : undefined,
+  amount: l.debit > 0 ? l.debit : l.credit,
+});
+
+const buildDefaultValues = (j: JournalRow): JournalEntryFormValues => ({
+  entryDate: dayjs(j.txDate).format("YYYY-MM-DD"),
+  debitLines: j.lines.filter((l) => l.debit > 0).map(buildLineDefaults),
+  creditLines: j.lines.filter((l) => l.credit > 0).map(buildLineDefaults),
+  description: j.description ?? "",
+});
+
 export const JournalList = ({ journals, accounts, year, month }: Props) => {
   const router = useRouter();
   const [editTarget, setEditTarget] = useState<JournalRow | null>(null);
 
+  const toMonthParam = (y: number, m: number) =>
+    `${y}${String(m).padStart(2, "0")}`;
+
   const handlePrevMonth = () => {
     const d = new Date(year, month - 2, 1);
-    router.push(`/journals?year=${d.getFullYear()}&month=${d.getMonth() + 1}`);
+    router.push(`/journals?month=${toMonthParam(d.getFullYear(), d.getMonth() + 1)}`);
   };
 
   const handleNextMonth = () => {
     const d = new Date(year, month, 1);
-    router.push(`/journals?year=${d.getFullYear()}&month=${d.getMonth() + 1}`);
+    router.push(`/journals?month=${toMonthParam(d.getFullYear(), d.getMonth() + 1)}`);
   };
-
-  const buildDefaultValues = (j: JournalRow): JournalEntryFormValues => ({
-    entryDate: dayjs(j.txDate).format("YYYY-MM-DD"),
-    debitAccountId: j.debitAccountId,
-    creditAccountId: j.creditAccountId,
-    amount: j.debitAmount,
-    description: j.description ?? "",
-  });
 
   const handleEditSuccess = () => {
     setEditTarget(null);
@@ -89,39 +97,66 @@ export const JournalList = ({ journals, accounts, year, month }: Props) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {journals.map((j) => (
-                <tr
-                  key={j.id}
-                  className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
-                >
-                  <td className="px-4 py-2">{formatDate(j.txDate)}</td>
-                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
-                    {j.debitAccountName}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {formatAmount(j.debitAmount)}
-                  </td>
-                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
-                    {j.creditAccountName}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {formatAmount(j.creditAmount)}
-                  </td>
-                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
-                    {j.description ?? "—"}
-                  </td>
-                  <td className="px-2 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setEditTarget(j)}
-                      className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                      title="編集"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {journals.map((j) => {
+                const debitLines = j.lines.filter((l) => l.debit > 0);
+                const creditLines = j.lines.filter((l) => l.credit > 0);
+                const rowCount = Math.max(debitLines.length, creditLines.length);
+
+                return Array.from({ length: rowCount }, (_, i) => (
+                  <tr
+                    key={`${j.id}-${i}`}
+                    className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 ${i > 0 ? "border-t-0" : ""}`}
+                  >
+                    {i === 0 ? (
+                      <td className="px-4 py-2" rowSpan={rowCount}>
+                        {formatDate(j.txDate)}
+                      </td>
+                    ) : null}
+                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
+                      {debitLines[i]
+                        ? debitLines[i].parentAccountName
+                          ? `${debitLines[i].parentAccountName} / ${debitLines[i].accountName}`
+                          : debitLines[i].accountName
+                        : ""}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {debitLines[i] ? formatAmount(debitLines[i].debit) : ""}
+                    </td>
+                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
+                      {creditLines[i]
+                        ? creditLines[i].parentAccountName
+                          ? `${creditLines[i].parentAccountName} / ${creditLines[i].accountName}`
+                          : creditLines[i].accountName
+                        : ""}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {creditLines[i]
+                        ? formatAmount(creditLines[i].credit)
+                        : ""}
+                    </td>
+                    {i === 0 ? (
+                      <>
+                        <td
+                          className="px-4 py-2 text-zinc-600 dark:text-zinc-400"
+                          rowSpan={rowCount}
+                        >
+                          {j.description ?? "—"}
+                        </td>
+                        <td className="px-2 py-2" rowSpan={rowCount}>
+                          <button
+                            type="button"
+                            onClick={() => setEditTarget(j)}
+                            className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                            title="編集"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        </td>
+                      </>
+                    ) : null}
+                  </tr>
+                ));
+              })}
             </tbody>
           </table>
         </div>

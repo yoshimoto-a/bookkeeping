@@ -14,7 +14,7 @@ export const login = async ({ email, password }: AuthFormData) => {
   });
 
   if (error) {
-    return { error: "メールアドレスまたはパスワードが正しくありません" };
+    return { success: false, error: "メールアドレスまたはパスワードが正しくありません" };
   }
 
   revalidatePath("/", "layout");

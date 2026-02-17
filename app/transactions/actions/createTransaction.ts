@@ -14,21 +14,21 @@ export const createTransactions = async (
 ): Promise<ActionResult> => {
   const user = await getAuthenticatedUser();
   const parsed = transactionFormSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
   const { presetId, items } = parsed.data;
 
   const preset = await prisma.preset.findFirst({
     where: { id: presetId, userId: user.id },
   });
-  if (!preset) return { error: "テンプレートが見つかりません" };
+  if (!preset) return { success: false, error: "テンプレートが見つかりません" };
 
   for (const [i, item] of items.entries()) {
     if (preset.requiresVariableAccount && !item.variableAccountId) {
-      return { error: `${i + 1}行目: 可変口座を選択してください` };
+      return { success: false, error: `${i + 1}行目: 可変口座を選択してください` };
     }
     if (preset.requiresPartner && !item.partnerId) {
-      return { error: `${i + 1}行目: 取引先を選択してください` };
+      return { success: false, error: `${i + 1}行目: 取引先を選択してください` };
     }
   }
 
