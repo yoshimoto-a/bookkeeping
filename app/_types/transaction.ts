@@ -14,11 +14,11 @@ export const transactionItemSchema = z.object({
     .transform((v) => (v && v.trim() !== "" ? v.trim() : undefined)),
   partnerId: z
     .string()
-    .nullish()
+    .nullable()
     .transform((v) => (v && v.trim() !== "" ? v : null)),
   variableAccountId: z
     .string()
-    .nullish()
+    .nullable()
     .transform((v) => (v && v.trim() !== "" ? v : null)),
 });
 
@@ -35,8 +35,8 @@ export type PresetForForm = {
   id: string;
   name: string;
   kind: PresetKind;
-  fixedDebitAccountId: string | null;
-  fixedCreditAccountId: string | null;
+  fixedDebitAccount: { id: string; name: string } | null;
+  fixedCreditAccount: { id: string; name: string } | null;
   requiresVariableAccount: boolean;
   requiresPartner: boolean;
 };

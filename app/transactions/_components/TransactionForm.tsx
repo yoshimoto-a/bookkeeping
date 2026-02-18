@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, useFieldArray, useWatch, Controller } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, Controller, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -31,7 +31,7 @@ type Props = {
 
 const emptyItem: TransactionItemValues = {
   txDate: "",
-  amount: undefined as unknown as number,
+  amount: 0,
   description: "",
   partnerId: null,
   variableAccountId: null,
@@ -48,58 +48,82 @@ export const TransactionForm = ({ presets, accounts, partners }: Props) => {
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   const selectedPresetId = useWatch({ control, name: "presetId" });
-  const selectedPreset = presets.find((p) => p.id === selectedPresetId);
+  const selectedPreset = selectedPresetId ? presets.find((p) => p.id === selectedPresetId) : null;
 
   const onSubmit = async (data: TransactionFormValues) => {
-    const result = await createTransactions(data).catch(() => ({
-      error: "登録に失敗しました。時間をおいて再度お試しください",
-    }));
-    if ("error" in result) {
-      toast.error(result.error);
-      return;
+    try {
+      const result = await createTransactions(data);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`${data.items.length}件の仕訳を登録しました`);
+      reset({ presetId: selectedPresetId, items: [emptyItem] });
+    } catch {
+      toast.error("登録に失敗しました。時間をおいて再度お試しください");
     }
-    toast.success(`${data.items.length}件の仕訳を登録しました`);
-    reset({ presetId: selectedPresetId, items: [emptyItem] });
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ja">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="max-w-sm">
-          <Controller
-            name="presetId"
-            control={control}
-            render={({ field }) => (
-              <AppSelect
-                label="テンプレート"
-                value={field.value}
-                onChange={field.onChange}
-                errorText={errors.presetId?.message}
-              >
-                <MenuItem value="">選択してください</MenuItem>
-                {presets.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </AppSelect>
-            )}
-          />
-        </div>
+    <FormProvider {...methods}>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ja">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="flex justify-between">
+            <div className="max-w-sm">
+              <Controller
+                name="presetId"
+                control={control}
+                render={({ field }) => (
+                  <AppSelect
+                    label="テンプレート"
+                    value={field.value}
+                    onChange={field.onChange}
+                    errorText={errors.presetId?.message}
+                  >
+                    <MenuItem value="">選択してください</MenuItem>
+                    {presets.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.name}
+                      </MenuItem>
+                    ))}
+                  </AppSelect>
+                )}
+              />
+            </div>
 
-        {fields.map((field, index) => (
-          <TransactionRowCard
-            key={field.id}
-            index={index}
-            control={control}
-            methods={methods}
-            selectedPreset={selectedPreset ?? null}
-            accounts={accounts}
-            partners={partners}
-            removable={fields.length > 1}
-            onRemove={() => remove(index)}
-          />
-        ))}
+            {/* 両側固定の場合の科目表示 */}
+            {selectedPreset?.kind === "TWO_SIDE_FIXED" && (
+              <div className="max-w-md rounded-md bg-blue-50 p-3 text-sm dark:bg-blue-950/30">
+                <div className="mb-2 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  この仕訳の内訳
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-zinc-500">借方</div>
+                    <div className="text-zinc-900 dark:text-zinc-100">
+                      {selectedPreset.fixedDebitAccount?.name || "未設定"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs font-medium text-zinc-500">貸方</div>
+                    <div className="text-zinc-900 dark:text-zinc-100">
+                      {selectedPreset.fixedCreditAccount?.name || "未設定"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>          {fields.map((field, index) => (
+            <TransactionRowCard
+              key={field.id}
+              index={index}
+              selectedPreset={selectedPreset ?? null}
+              accounts={accounts}
+              partners={partners}
+              removable={fields.length > 1}
+              onRemove={() => remove(index)}
+            />
+          ))}
 
         <div className="flex items-center gap-3 pt-2">
           <PrimaryButton type="submit" disabled={isSubmitting}>
@@ -115,5 +139,6 @@ export const TransactionForm = ({ presets, accounts, partners }: Props) => {
         </div>
       </form>
     </LocalizationProvider>
+    </FormProvider>
   );
 };

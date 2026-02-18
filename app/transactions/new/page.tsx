@@ -6,7 +6,7 @@ import { TransactionForm } from "../_components/TransactionForm";
 
 const TransactionsNewPage = async () => {
   const user = await getAuthenticatedUser();
-  const [presets, accounts, partners] = await Promise.all([
+  const [presetsResult, accounts, partners] = await Promise.all([
     getPresetsForForm(user.id),
     getAccountsWithMeta(user.id),
     getPartnersWithMeta(user.id),
@@ -15,11 +15,18 @@ const TransactionsNewPage = async () => {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <h1 className="mb-6 text-xl font-bold">テンプレから登録</h1>
-      <TransactionForm
-        presets={presets}
-        accounts={accounts}
-        partners={partners}
-      />
+      
+      {!presetsResult.success ? (
+        <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
+          {presetsResult.error}
+        </div>
+      ) : (
+        <TransactionForm
+          presets={presetsResult.data}
+          accounts={accounts}
+          partners={partners}
+        />
+      )}
     </div>
   );
 };

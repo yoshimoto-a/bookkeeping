@@ -44,3 +44,7 @@ export type FiscalYearSettingData = {
 export type ActionResult =
   | { success: true }
   | { success: false; error: string };
+
+export type QueryResult<T> = 
+  | { success: true; data: T }
+  | { success: false; error: string };
