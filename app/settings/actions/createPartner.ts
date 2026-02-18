@@ -9,7 +9,7 @@ import { partnerFormSchema, normalizePartnerData, type PartnerFormData } from "@
 export const createPartner = async (data: PartnerFormData): Promise<ActionResult> => {
   const user = await getAuthenticatedUser();
   const parsed = partnerFormSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
   const normalized = normalizePartnerData(parsed.data);
 

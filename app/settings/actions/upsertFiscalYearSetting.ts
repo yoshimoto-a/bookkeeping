@@ -11,7 +11,7 @@ export const upsertFiscalYearSetting = async (
 ): Promise<ActionResult> => {
   const user = await getAuthenticatedUser();
   const parsed = taxStatusFormSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
   const { taxStatus } = parsed.data;
 
   await prisma.fiscalYearSetting.upsert({

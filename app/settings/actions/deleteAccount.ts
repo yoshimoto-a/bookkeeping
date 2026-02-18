@@ -12,16 +12,16 @@ export const deleteAccount = async (id: string): Promise<ActionResult> => {
     where: { id, userId: user.id },
     include: { children: { select: { id: true } } },
   });
-  if (!account) return { error: "勘定科目が見つかりません" };
+  if (!account) return { success: false, error: "勘定科目が見つかりません" };
 
   const { isOwnerAccount, children } = account;
-  if (isOwnerAccount) return { error: "オーナー勘定は削除できません" };
+  if (isOwnerAccount) return { success: false, error: "オーナー勘定は削除できません" };
   if (children.length > 0) {
-    return { error: "補助科目を持つ科目は削除できません。先に補助科目を削除してください" };
+    return { success: false, error: "補助科目を持つ科目は削除できません。先に補助科目を削除してください" };
   }
 
   const usedInJournal = await prisma.journalLine.findFirst({ where: { accountId: id } });
-  if (usedInJournal) return { error: "この勘定科目は使用中のため削除できません" };
+  if (usedInJournal) return { success: false, error: "この勘定科目は使用中のため削除できません" };
 
   await prisma.account.delete({ where: { id } });
 
