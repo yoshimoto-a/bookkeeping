@@ -330,6 +330,14 @@ model ImportRow {
   mappedPartner         Partner?      @relation(fields: [mappedPartnerId], references: [id])
 
   @@index([importSessionId])
+  @@map("import_rows")
+}
+
+// ---------------------------------------------------------------------------
+// FixedAsset — 固定資産
+// ---------------------------------------------------------------------------
+model FixedAsset {
+  id              String   @id @default(cuid())
   userId          String                        @map("user_id")
   name            String                                          /// 資産名
   acquiredOn      DateTime                      @map("acquired_on")      /// 取得日
