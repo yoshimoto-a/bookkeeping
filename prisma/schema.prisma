@@ -277,6 +277,7 @@ model JournalLine {
   credit         Int      @default(0)                                  /// 貸方金額（円）
   taxRateId      String?                       @map("tax_rate_id")
   taxAmount      Int?                          @map("tax_amount")      /// 消費税額（円）
+  taxKind        TaxKind  @default(OUT_OF_SCOPE) @map("tax_kind")      /// 仕入税額控除の対象区分
   createdAt      DateTime @default(now())      @map("created_at")
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
 
