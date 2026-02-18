@@ -69,7 +69,7 @@ export const TransactionForm = ({ presets, accounts, partners }: Props) => {
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ja">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="flex justify-between">
-            <div className="max-w-sm">
+            <div className="w-80">
               <Controller
                 name="presetId"
                 control={control}
@@ -93,19 +93,16 @@ export const TransactionForm = ({ presets, accounts, partners }: Props) => {
 
             {/* 両側固定の場合の科目表示 */}
             {selectedPreset?.kind === "TWO_SIDE_FIXED" && (
-              <div className="max-w-md rounded-md bg-blue-50 p-3 text-sm dark:bg-blue-950/30">
-                <div className="mb-2 text-xs font-medium text-blue-700 dark:text-blue-300">
-                  この仕訳の内訳
-                </div>
+              <div className="rounded-md bg-blue-50 p-3 text-sm dark:bg-blue-950/30">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="mb-1 text-xs font-medium text-zinc-500">借方</div>
+                  <div className="flex justify-center items-center gap-2">
+                    <div className="mb-1 text-xs font-medium text-zinc-500">(借方)</div>
                     <div className="text-zinc-900 dark:text-zinc-100">
                       {selectedPreset.fixedDebitAccount?.name || "未設定"}
                     </div>
                   </div>
-                  <div>
-                    <div className="mb-1 text-xs font-medium text-zinc-500">貸方</div>
+                  <div className="flex justify-center items-center gap-2">
+                    <div className="mb-1 text-xs font-medium text-zinc-500">(貸方)</div>
                     <div className="text-zinc-900 dark:text-zinc-100">
                       {selectedPreset.fixedCreditAccount?.name || "未設定"}
                     </div>
@@ -113,7 +110,8 @@ export const TransactionForm = ({ presets, accounts, partners }: Props) => {
                 </div>
               </div>
             )}
-          </div>          {fields.map((field, index) => (
+          </div>
+          {fields.map((field, index) => (
             <TransactionRowCard
               key={field.id}
               index={index}
