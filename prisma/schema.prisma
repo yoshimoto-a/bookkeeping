@@ -56,6 +56,14 @@ enum ImportStatus {
   APPLIED // 適用済み（仕訳生成済み）
 }
 
+// 仕入税額控除の対象区分
+enum TaxKind {
+  TAXABLE_DEDUCTIBLE     // 課税（仕入税額控除対象）
+  TAXABLE_NON_DEDUCTIBLE // 課税（仕入税額控除対象外）
+  NON_TAXABLE            // 非課税
+  OUT_OF_SCOPE           // 不課税・対象外
+}
+
 // ---------------------------------------------------------------------------
 // TaxRate — 税率マスタ（ユーザー共通、シードで投入）
 // ---------------------------------------------------------------------------
@@ -321,14 +329,6 @@ model ImportRow {
   mappedPartner         Partner?      @relation(fields: [mappedPartnerId], references: [id])
 
   @@index([importSessionId])
-  @@map("import_rows")
-}
-
-// ---------------------------------------------------------------------------
-// FixedAsset — 固定資産台帳（最低限）
-// ---------------------------------------------------------------------------
-model FixedAsset {
-  id              String   @id @default(cuid())
   userId          String                        @map("user_id")
   name            String                                          /// 資産名
   acquiredOn      DateTime                      @map("acquired_on")      /// 取得日
