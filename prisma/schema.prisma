@@ -56,6 +56,14 @@ enum ImportStatus {
   APPLIED // 適用済み（仕訳生成済み）
 }
 
+// 仕入税額控除の対象区分
+enum TaxKind {
+  TAXABLE_DEDUCTIBLE     // 課税（仕入税額控除対象）
+  TAXABLE_NON_DEDUCTIBLE // 課税（仕入税額控除対象外）
+  NON_TAXABLE            // 非課税
+  OUT_OF_SCOPE           // 不課税・対象外
+}
+
 // ---------------------------------------------------------------------------
 // TaxRate — 税率マスタ（ユーザー共通、シードで投入）
 // ---------------------------------------------------------------------------
@@ -269,6 +277,7 @@ model JournalLine {
   credit         Int      @default(0)                                  /// 貸方金額（円）
   taxRateId      String?                       @map("tax_rate_id")
   taxAmount      Int?                          @map("tax_amount")      /// 消費税額（円）
+  taxKind        TaxKind  @default(OUT_OF_SCOPE) @map("tax_kind")      /// 仕入税額控除の対象区分
   createdAt      DateTime @default(now())      @map("created_at")
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -325,7 +334,7 @@ model ImportRow {
 }
 
 // ---------------------------------------------------------------------------
-// FixedAsset — 固定資産台帳（最低限）
+// FixedAsset — 固定資産
 // ---------------------------------------------------------------------------
 model FixedAsset {
   id              String   @id @default(cuid())
