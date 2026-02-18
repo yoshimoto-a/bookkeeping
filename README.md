@@ -50,170 +50,184 @@ pnpm prisma studio
 ## ER図
 ```mermaid
 erDiagram
-    User {
-        string id PK
-        string supabaseId
-        string email
-        string name
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ Account : has
+  Account ||--o{ Account : parent_of
 
-    FiscalYearSetting {
-        string id PK
-        string userId FK
-        int fiscalYear
-        enum taxStatus
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ Partner : has
+  Partner }o--|| Account : defaultReceiptAccount
 
-    Account {
-        string id PK
-        string userId FK
-        string parentId FK
-        string code
-        string name
-        enum type
-        boolean isOwnerAccount
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ Preset : has
+  Preset }o--|| Account : fixedDebitAccount
+  Preset }o--|| Account : fixedCreditAccount
 
-    Partner {
-        string id PK
-        string userId FK
-        string name
-        string code
-        string defaultReceiptAccountId FK
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ Transaction : has
+  Transaction }|--|| Preset : uses
+  Transaction }o--|| Partner : partner
+  Transaction }o--|| Account : variableAccount
+  Transaction ||--o| JournalEntry : generates
 
-    Preset {
-        string id PK
-        string userId FK
-        enum kind
-        string fixedDebitAccountId FK
-        string fixedCreditAccountId FK
-        boolean requiresVariableAccount
-        boolean requiresPartner
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ JournalEntry : has
+  JournalEntry }o--|| Partner : partner
+  JournalEntry ||--o{ JournalLine : has
 
-    Transaction {
-        string id PK
-        string userId FK
-        string presetId FK
-        date txDate
-        int amount
-        string description
-        string partnerId FK
-        string variableAccountId FK
-        datetime createdAt
-        datetime updatedAt
-    }
+  JournalLine }|--|| Account : account
+  TaxRate ||--o{ JournalLine : applied_to
 
-    JournalEntry {
-        string id PK
-        string userId FK
-        date entryDate
-        string description
-        enum origin
-        string partnerId FK
-        string transactionId FK
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ ImportSession : has
+  ImportSession ||--o{ ImportRow : has
+  ImportRow }o--|| Preset : mappedPreset
+  ImportRow }o--|| Account : mappedVariableAccount
+  ImportRow }o--|| Partner : mappedPartner
 
-    JournalLine {
-        string id PK
-        string journalEntryId FK
-        string accountId FK
-        int debit
-        int credit
-        string taxRateId FK
-        int taxAmount
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ FixedAsset : has
+  FixedAsset ||--o{ DepreciationRun : has
+  DepreciationRun }|--|| JournalEntry : journalEntry
 
-    TaxRate {
-        string id PK
-        string name
-        int rateBps
-        datetime createdAt
-        datetime updatedAt
-    }
+  User ||--o{ FiscalYearSetting : has
 
-    ImportSession {
-        string id PK
-        string userId FK
-        enum status
-        datetime createdAt
-        datetime updatedAt
-    }
+  User {
+    String id PK
+    String supabaseId "UNIQUE"
+    String email
+    String name
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    ImportRow {
-        string id PK
-        string importSessionId FK
-        date rowDate
-        string memo
-        int signedAmount
-        string mappedPresetId FK
-        string mappedVariableAccountId FK
-        string mappedPartnerId FK
-        string transactionId FK
-        datetime createdAt
-        datetime updatedAt
-    }
+  Account {
+    String id PK
+    String userId FK
+    String parentId FK "nullable"
+    String code
+    String name
+    String kana "nullable"
+    String searchKey "nullable"
+    AccountType type
+    Boolean isOwnerAccount
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    FixedAsset {
-        string id PK
-        string userId FK
-        string name
-        date acquiredOn
-        int cost
-        int usefulLifeYears
-        datetime createdAt
-        datetime updatedAt
-    }
+  Partner {
+    String id PK
+    String userId FK
+    String name
+    String code "nullable"
+    String defaultReceiptAccountId FK "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    DepreciationRun {
-        string id PK
-        string fixedAssetId FK
-        int fiscalYear
-        int amount
-        date postedOn
-        string journalEntryId FK
-        datetime createdAt
-        datetime updatedAt
-    }
+  Preset {
+    String id PK
+    String userId FK
+    String name
+    PresetKind kind
+    String fixedDebitAccountId FK "nullable"
+    String fixedCreditAccountId FK "nullable"
+    Boolean requiresVariableAccount
+    Boolean requiresPartner
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    User ||--o{ Account : has
-    User ||--o{ Partner : has
-    User ||--o{ Preset : has
-    User ||--o{ Transaction : has
-    User ||--o{ JournalEntry : has
-    User ||--o{ ImportSession : has
-    User ||--o{ FixedAsset : has
-    User ||--o{ FiscalYearSetting : has
+  Transaction {
+    String id PK
+    String userId FK
+    String presetId FK
+    DateTime txDate
+    Int amount
+    String description "nullable"
+    String partnerId FK "nullable"
+    String variableAccountId FK "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    Account ||--o{ Account : children
-    Account ||--o{ JournalLine : posted_to
-    Account ||--o{ Transaction : variable_of
-    Partner ||--o{ JournalEntry : referenced_by
+  JournalEntry {
+    String id PK
+    String userId FK
+    DateTime entryDate
+    String description "nullable"
+    JournalOrigin origin
+    String partnerId FK "nullable"
+    String transactionId FK "UNIQUE, nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    Preset ||--o{ Transaction : generates
+  JournalLine {
+    String id PK
+    String journalEntryId FK
+    String accountId FK
+    Int debit
+    Int credit
+    String taxRateId FK "nullable"
+    Int taxAmount "nullable"
+    TaxKind taxKind
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    Transaction ||--|{ JournalEntry : creates
+  TaxRate {
+    String id PK
+    String name "UNIQUE"
+    Int rateBps
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    JournalEntry ||--o{ JournalLine : contains
+  ImportSession {
+    String id PK
+    String userId FK
+    ImportStatus status
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    ImportSession ||--o{ ImportRow : has
+  ImportRow {
+    String id PK
+    String importSessionId FK
+    DateTime rowDate
+    String memo "nullable"
+    Int signedAmount
+    String mappedPresetId FK "nullable"
+    String mappedVariableAccountId FK "nullable"
+    String mappedPartnerId FK "nullable"
+    String transactionId "nullable (no FK in schema)"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    FixedAsset ||--o{ DepreciationRun : has
+  FixedAsset {
+    String id PK
+    String userId FK
+    String name
+    DateTime acquiredOn
+    Int cost
+    Int usefulLifeYears
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-    TaxRate ||--o{ JournalLine : applied_to
+  DepreciationRun {
+    String id PK
+    String fixedAssetId FK
+    Int fiscalYear
+    Int amount
+    DateTime postedOn
+    String journalEntryId FK
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  FiscalYearSetting {
+    String id PK
+    String userId FK
+    Int fiscalYear
+    TaxStatus taxStatus
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
 ```
