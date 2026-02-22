@@ -25,11 +25,24 @@ export const TransactionConditionalFields = ({
   const { control, formState: { errors } } = useFormContext<TransactionFormValues>();
   const itemErrors = errors.items?.[index];
 
-  const accountOptions = accounts.map((a) => ({
-    value: a.id,
-    label: a.name,
-    group: ACCOUNT_TYPE_LABELS[a.type],
-  }));
+  const accountOptions = accounts.map((a) => {
+    if (a.parentId) {
+      // 補助科目の場合は親科目名も表示
+      const parent = accounts.find(parent => parent.id === a.parentId);
+      return {
+        value: a.id,
+        label: `${parent?.name} / ${a.name}`,
+        group: ACCOUNT_TYPE_LABELS[a.type],
+      };
+    } else {
+      // 親科目の場合
+      return {
+        value: a.id,
+        label: a.name,
+        group: ACCOUNT_TYPE_LABELS[a.type],
+      };
+    }
+  });
 
   return (
     <>
