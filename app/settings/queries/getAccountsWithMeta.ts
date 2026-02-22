@@ -4,7 +4,7 @@ import type { AccountWithMeta } from "@/app/_types/settings";
 export const getAccountsWithMeta = async (userId: string): Promise<AccountWithMeta[]> => {
   const [rawAccounts, referencedAccountIds] = await Promise.all([
     prisma.account.findMany({
-      where: { userId, parentId: null },
+      where: { userId },
       orderBy: [{ type: "asc" }, { code: "asc" }],
       select: {
         id: true,
