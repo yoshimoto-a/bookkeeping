@@ -54,6 +54,8 @@ export const JournalLineRow = ({
               value={f.value || null}
               options={accountOptions}
               groupBy={(o) => o.group ?? ""}
+              showSubAccounts={true}
+              indentSubAccounts={true}
               onChange={(val) => {
                 f.onChange(val ?? "");
                 setValue(`${side}.${index}.subAccountId`, undefined);
