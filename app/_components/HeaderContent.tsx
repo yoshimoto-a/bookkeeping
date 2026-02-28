@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, Book, FileText } from "lucide-react";
 import { signOut } from "@/app/actions";
 
 type Props = {
@@ -11,6 +11,22 @@ type Props = {
 export const AuthedHeader = ({ email }: Props) => {
   return (
     <>
+      <Link
+        href="/journals"
+        className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+        title="仕訳帳"
+      >
+        <FileText size={16} />
+        仕訳帳
+      </Link>
+      <Link
+        href="/ledger"
+        className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+        title="総勘定元帳"
+      >
+        <Book size={16} />
+        総勘定元帳
+      </Link>
       <span className="text-sm text-gray-600">{email}</span>
       <Link
         href="/settings"

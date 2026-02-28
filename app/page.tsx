@@ -5,6 +5,7 @@ const MENU_ITEMS = [
   { href: "/transactions/new", title: "テンプレから登録", description: "定型仕訳テンプレートを使って仕訳を登録します" },
   { href: "/transfers/new", title: "振替伝票", description: "振替仕訳を登録します" },
   { href: "/journals", title: "仕訳帳", description: "登録済みの仕訳を一覧で確認します" },
+  { href: "/ledger", title: "総勘定元帳", description: "勘定科目ごとの取引履歴と残高を確認します" },
 ] as const;
 
 const cardClass =

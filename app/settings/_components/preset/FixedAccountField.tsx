@@ -27,6 +27,7 @@ export const FixedAccountField = ({ accounts, name, label }: Props) => {
         value: a.id,
         label: `${parent?.name} / ${a.name}`,
         group: ACCOUNT_TYPE_LABELS[a.type],
+        parentId: a.parentId,
       };
     } else {
       // 親科目の場合
@@ -34,6 +35,7 @@ export const FixedAccountField = ({ accounts, name, label }: Props) => {
         value: a.id,
         label: a.name,
         group: ACCOUNT_TYPE_LABELS[a.type],
+        parentId: a.parentId,
       };
     }
   });
@@ -50,6 +52,8 @@ export const FixedAccountField = ({ accounts, name, label }: Props) => {
             value={field.value}
             options={options}
             groupBy={(o) => o.group ?? ""}
+            showSubAccounts={true}
+            indentSubAccounts={true}
             onChange={(val) => {
               field.onChange(val);
               field.onBlur();

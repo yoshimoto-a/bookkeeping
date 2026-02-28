@@ -33,6 +33,7 @@ export const TransactionConditionalFields = ({
         value: a.id,
         label: `${parent?.name} / ${a.name}`,
         group: ACCOUNT_TYPE_LABELS[a.type],
+        parentId: a.parentId,
       };
     } else {
       // 親科目の場合
@@ -40,6 +41,7 @@ export const TransactionConditionalFields = ({
         value: a.id,
         label: a.name,
         group: ACCOUNT_TYPE_LABELS[a.type],
+        parentId: a.parentId,
       };
     }
   });
