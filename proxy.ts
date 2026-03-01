@@ -1,21 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { COOKIE_OPTIONS } from "@/lib/supabase/constants";
 
 export const proxy = async (request: NextRequest) => {
   const ref = { response: NextResponse.next({ request }) };
 
-  const supabase = createServerSupabaseClient({
-    getAll: () => request.cookies.getAll(),
-    setAll: (cookiesToSet) => {
-      cookiesToSet.forEach(({ name, value }) =>
-        request.cookies.set(name, value)
-      );
-      ref.response = NextResponse.next({ request });
-      cookiesToSet.forEach(({ name, value, options }) =>
-        ref.response.cookies.set(name, value, options)
-      );
-    },
-  });
+  const supabase = createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          ref.response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            ref.response.cookies.set(name, value, { ...options, ...COOKIE_OPTIONS })
+          );
+        },
+      },
+    }
+  );
 
   const {
     data: { user },
