@@ -41,7 +41,11 @@ export const proxy = async (request: NextRequest) => {
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    ref.response.cookies.getAll().forEach((cookie) =>
+      redirectResponse.cookies.set(cookie)
+    );
+    return redirectResponse;
   }
 
   return ref.response;
