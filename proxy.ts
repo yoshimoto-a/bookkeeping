@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { COOKIE_OPTIONS } from "@/lib/supabase/constants";
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+};
 
 export const proxy = async (request: NextRequest) => {
   const ref = { response: NextResponse.next({ request }) };
