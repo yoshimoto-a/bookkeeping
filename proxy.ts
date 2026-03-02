@@ -7,6 +7,11 @@ const COOKIE_OPTIONS = {
   sameSite: "lax" as const,
 };
 
+const PUBLIC_PATHS = ["/login", "/signup", "/api/signup"];
+
+const isPublicPath = (pathname: string) =>
+  PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+
 export const proxy = async (request: NextRequest) => {
   const ref = { response: NextResponse.next({ request }) };
 
@@ -33,12 +38,7 @@ export const proxy = async (request: NextRequest) => {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/signup") &&
-    !request.nextUrl.pathname.startsWith("/api/signup")
-  ) {
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const redirectResponse = NextResponse.redirect(url);
