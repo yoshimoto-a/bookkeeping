@@ -1,35 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { COOKIE_OPTIONS } from "@/lib/supabase/constants";
+
+const PUBLIC_PATHS = ["/login", "/signup", "/api/signup"];
+
+const isPublicPath = (pathname: string) =>
+  PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
 export const proxy = async (request: NextRequest) => {
   const ref = { response: NextResponse.next({ request }) };
 
-  const supabase = createServerSupabaseClient({
-    getAll: () => request.cookies.getAll(),
-    setAll: (cookiesToSet) => {
-      cookiesToSet.forEach(({ name, value }) =>
-        request.cookies.set(name, value)
-      );
-      ref.response = NextResponse.next({ request });
-      cookiesToSet.forEach(({ name, value, options }) =>
-        ref.response.cookies.set(name, value, options)
-      );
-    },
-  });
+  const supabase = createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          ref.response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            ref.response.cookies.set(name, value, { ...options, ...COOKIE_OPTIONS })
+          );
+        },
+      },
+    }
+  );
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/signup") &&
-    !request.nextUrl.pathname.startsWith("/api/signup")
-  ) {
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    ref.response.cookies.getAll().forEach((cookie) =>
+      redirectResponse.cookies.set(cookie)
+    );
+    return redirectResponse;
   }
 
   return ref.response;

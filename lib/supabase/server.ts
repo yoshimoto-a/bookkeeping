@@ -1,29 +1,42 @@
-import { createServerClient, type CookieMethodsServer } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { supabaseUrl, supabaseAnonKey } from "./config";
+import { COOKIE_OPTIONS } from "./constants";
 
-export const createServerSupabaseClient = (cookies: CookieMethodsServer) =>
-  createServerClient(supabaseUrl, supabaseAnonKey, { cookies });
-
-const getCookieStore = async () => {
-  const cookieStore = await cookies();
-  return {
-    getAll: () => cookieStore.getAll(),
-    setAll: (cookiesToSet: { name: string; value: string; options: object }[]) =>
-      cookiesToSet.forEach(({ name, value, options }) =>
-        cookieStore.set(name, value, options)
-      ),
-  };
-};
-
-/** Server Action / Route Handler 用（cookie 書き込み可） */
+/** Server Action / Route Handler 用（cookie 読み書き可） */
 export const createClient = async () => {
-  const { getAll, setAll } = await getCookieStore();
-  return createServerSupabaseClient({ getAll, setAll });
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) =>
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, { ...options, ...COOKIE_OPTIONS })
+          ),
+      },
+    }
+  );
 };
 
-/** Server Component 用（cookie 読み取り専用） */
+/** Server Component 用（読み取り専用、トークンリフレッシュは proxy に委譲） */
 export const createReadonlyClient = async () => {
-  const { getAll } = await getCookieStore();
-  return createServerSupabaseClient({ getAll });
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        // Server Component では cookie 書き込み不可。
+        // トークンリフレッシュは proxy が毎リクエスト担保するため、ここでは不要。
+        // 注意: setAll を省略すると SDK が console.warn を出すフォールバックに差し替えるため、
+        // 意図的に空関数を渡している。
+        setAll: () => {},
+      },
+    }
+  );
 };
