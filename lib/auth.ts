@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createReadonlyClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
 export const getAuthenticatedUser = async () => {
-  const supabase = await createClient();
+  const supabase = await createReadonlyClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

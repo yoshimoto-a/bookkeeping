@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createReadonlyClient } from "@/lib/supabase/server";
 import { AuthedHeader } from "./HeaderContent";
 
 export const Header = async () => {
-  const supabase = await createClient();
+  const supabase = await createReadonlyClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
