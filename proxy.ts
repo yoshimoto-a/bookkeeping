@@ -1,11 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-};
+import { COOKIE_OPTIONS } from "@/lib/supabase/constants";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/api/signup"];
 

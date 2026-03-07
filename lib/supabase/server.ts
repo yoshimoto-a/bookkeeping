@@ -1,11 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-};
+import { COOKIE_OPTIONS } from "./constants";
 
 /** Server Action / Route Handler 用（cookie 読み書き可） */
 export const createClient = async () => {
