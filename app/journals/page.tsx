@@ -1,20 +1,11 @@
 import { getAuthenticatedUser } from "@/lib/auth";
+import { parseMonth } from "@/lib/date";
 import { getJournalEntries } from "./queries/getJournalEntries";
 import { getAccountsWithMeta } from "@/app/settings/queries/getAccountsWithMeta";
 import { JournalList } from "./_components/JournalList";
 
 type Props = {
   searchParams: Promise<{ month?: string }>;
-};
-
-const parseMonth = (param?: string): { year: number; month: number } => {
-  const now = new Date();
-  if (param && /^\d{6}$/.test(param)) {
-    const year = Number(param.slice(0, 4));
-    const month = Number(param.slice(4, 6));
-    if (month >= 1 && month <= 12) return { year, month };
-  }
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
 };
 
 const JournalsPage = async ({ searchParams }: Props) => {
