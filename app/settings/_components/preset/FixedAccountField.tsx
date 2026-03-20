@@ -45,7 +45,6 @@ export const FixedAccountField = ({ accounts, name, label }: Props) => {
       <Controller
         name={name}
         control={control}
-        defaultValue={null}
         render={({ field }) => (
           <AppAutocomplete
             label={label}
