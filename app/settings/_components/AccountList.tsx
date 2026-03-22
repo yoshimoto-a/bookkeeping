@@ -1,13 +1,14 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { Pencil, Trash2, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 import type { AccountWithMeta } from "@/app/_types/settings";
 import { deleteAccount } from "@/app/settings/actions";
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER } from "@/lib/constants/accountTypes";
 import { PrimaryButton } from "@/app/_components/PrimaryButton";
 import { AccountFormModal } from "./AccountFormModal";
+import { AccountParentRow } from "./account-list/AccountParentRow";
+import { AccountChildRow } from "./account-list/AccountChildRow";
 
 type Props = {
   accounts: AccountWithMeta[];
@@ -18,10 +19,22 @@ type ModalState =
   | { mode: "create"; parentId: string | null }
   | { mode: "edit"; account: AccountWithMeta };
 
+/** 子科目を AccountWithMeta 形式に変換する */
+const toAccountWithMeta = (
+  child: { id: string; code: string; name: string },
+  parent: AccountWithMeta,
+): AccountWithMeta => ({
+  ...child,
+  type: parent.type,
+  parentId: parent.id,
+  isOwnerAccount: false,
+  isReferenced: false,
+  children: [],
+});
+
 export const AccountList = ({ accounts }: Props) => {
   const [modalState, setModalState] = useState<ModalState>({ mode: "closed" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  // 子科目の折りたたみ状態
   const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({});
 
   const grouped = ACCOUNT_TYPE_ORDER.map((type) => ({
@@ -30,11 +43,11 @@ export const AccountList = ({ accounts }: Props) => {
     items: accounts.filter((a) => a.type === type),
   })).filter((g) => g.items.length > 0);
 
-  const handleDelete = async (account: AccountWithMeta | { id: string; name: string }) => {
-    if (!confirm(`「${account.name}」を削除しますか？`)) return;
+  const handleDelete = async (target: { id: string; name: string }) => {
+    if (!confirm(`「${target.name}」を削除しますか？`)) return;
 
-    setDeletingId(account.id);
-    const result = await deleteAccount(account.id);
+    setDeletingId(target.id);
+    const result = await deleteAccount(target.id);
     setDeletingId(null);
 
     if ("error" in result) {
@@ -75,107 +88,30 @@ export const AccountList = ({ accounts }: Props) => {
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {items.map((account) => (
                     <Fragment key={account.id}>
-                      <tr className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                        <td className="px-4 py-2 font-mono text-xs">{account.code}</td>
-                        <td className="px-4 py-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => toggleParent(account.id)}
-                              className="rounded p-1 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
-                              aria-label={collapsedParents[account.id] ? "展開" : "折りたたみ"}
-                            >
-                              {collapsedParents[account.id] ? (
-                                <ChevronRight size={14} />
-                              ) : (
-                                <ChevronDown size={14} />
-                              )}
-                            </button>
-                            <span>{account.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => setModalState({ mode: "create", parentId: account.id })}
-                              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-200 hover:text-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                              title="補助科目を追加"
-                            >
-                              <Plus size={12} /> 補助科目
-                            </button>
-                            <button
-                              onClick={() => setModalState({ mode: "edit", account })}
-                              className="rounded p-1 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                              title="編集"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            {account.isOwnerAccount ? (
-                              // 削除不可でもレイアウトを揃えるため不可視ボタンでスペース確保
-                              <button className="invisible rounded p-1" aria-hidden>
-                                <Trash2 size={14} />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleDelete(account)}
-                                disabled={deletingId === account.id}
-                                className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
-                                title="削除"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                      {!collapsedParents[account.id] && account.children.map((child) => (
-                        <tr key={child.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                          <td className="py-2 pl-10 pr-4 font-mono text-xs text-zinc-500 relative">
-                            <span className="absolute left-6 top-0 h-full w-px bg-zinc-200 dark:bg-zinc-700" />
-                            {child.code}
-                          </td>
-                          <td className="py-2 pl-10 pr-4 text-zinc-600 dark:text-zinc-400">
-                            <span className="mr-1 text-xs text-zinc-400">└</span>
-                            {child.name}
-                          </td>
-                          <td className="px-4 py-2 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {/* 親行と同じ3ボタン幅を維持するため、補助追加は不可視プレースホルダー */}
-                              <button className="invisible flex items-center gap-1 rounded px-2 py-1 text-xs" aria-hidden>
-                                <Plus size={12} /> 補助科目
-                              </button>
-                              {/* 子科目の編集 */}
-                              <button
-                                onClick={() => setModalState({
-                                  mode: "edit",
-                                  account: {
-                                    id: child.id,
-                                    code: child.code,
-                                    name: child.name,
-                                    type: account.type,
-                                    parentId: account.id,
-                                    isOwnerAccount: false,
-                                    isReferenced: false,
-                                    children: [],
-                                  },
-                                })}
-                                className="rounded p-1 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                                title="編集"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              {/* 子科目の削除 */}
-                              <button
-                                onClick={() => handleDelete(child)}
-                                disabled={deletingId === child.id}
-                                className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
-                                title="削除"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      <AccountParentRow
+                        account={account}
+                        isCollapsed={!!collapsedParents[account.id]}
+                        isDeleting={deletingId === account.id}
+                        onToggle={() => toggleParent(account.id)}
+                        onAddChild={() => setModalState({ mode: "create", parentId: account.id })}
+                        onEdit={() => setModalState({ mode: "edit", account })}
+                        onDelete={() => handleDelete(account)}
+                      />
+                      {!collapsedParents[account.id] &&
+                        account.children.map((child) => (
+                          <AccountChildRow
+                            key={child.id}
+                            child={child}
+                            isDeleting={deletingId === child.id}
+                            onEdit={() =>
+                              setModalState({
+                                mode: "edit",
+                                account: toAccountWithMeta(child, account),
+                              })
+                            }
+                            onDelete={() => handleDelete(child)}
+                          />
+                        ))}
                     </Fragment>
                   ))}
                 </tbody>
