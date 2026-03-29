@@ -11,7 +11,7 @@ type Props = {
   onClick?: () => void;
 };
 
-const variantClasses: Record<Variant, string> = {
+const variantClasses = {
   default:
     "text-zinc-600 hover:bg-zinc-200 hover:text-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700",
   danger:
