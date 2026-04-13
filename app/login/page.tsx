@@ -20,7 +20,8 @@ export const LoginPage = () => {
   });
 
   const onSubmit = async (body: AuthFormData) => {
-    const result = await login(body);
+    const { email, password } = body;
+    const result = await login({ email, password });
     if (result.error) {
       toast.error(result.error);
     }
